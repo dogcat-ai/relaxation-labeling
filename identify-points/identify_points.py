@@ -1,6 +1,8 @@
 import os
 import sys
-sys.path.append(os.path.dirname('/Users/mannyglover/Code/relaxation-labeling/core/'))
+user = "priyabapat"
+path = "/Users/" + user + "/Code/relaxation-labeling/core/"
+sys.path.append(os.path.dirname(path))
 print(sys.path)
 from relax import RelaxationLabeling
 
@@ -102,76 +104,82 @@ class IdentifyPoints(RelaxationLabeling):
 
         return perms
 
+    def main(self):
 
-Dim = 28
-NumLabels = 10
-NumObjects = 10
+
+        Dim = 28
+        NumLabels = 10
+        NumObjects = 10
+        PlotPerms = self.twoElementPermutations(Dim)
+        MaxNumPlots = 1
+        print('perms ',PlotPerms)
+
+
+        Noise = 0.0
+        DeleteLabel = -1
+        ObjectOffset = 3*np.ones((Dim))
+        ShuffleObjects = False
+        ObjectScale = 2.0
+        RotateObjects = True
+        CompatType = 3
+
+        objects, labels =  self.initPointObjectsAndLabels(Dim, NumObjects, NumLabels, Noise, DeleteLabel, ObjectOffset, ObjectScale, ShuffleObjects, RotateObjects)
+
+        if CompatType == 2:
+            r, p = self.init2DCompat(objects, labels)
+        if CompatType == 3:
+            r, p = self.init3DCompat(objects, labels)
+
+
+        numPlot = 0
+        for indx,perm in enumerate(PlotPerms):
+            plt.plot(labels[:,perm[0]], labels[:,perm[1]], 'ro')
+            plt.plot(objects[:,perm[0]], objects[:,perm[1]], 'g+')
+            for i in range(0,labels.shape[0]):
+                plt.plot([labels[i,perm[0]], objects[i,perm[0]]], [labels[i,perm[1]], objects[i,perm[1]]], linewidth=1.0)
+            plt.title('Objects Shuffled ' + str(perm))
+            plt.show()
+            if indx >= MaxNumPlots: break
+
+
+        NumObjects = objects.shape[0]
+        NumLabels = labels.shape[0]
+        print('Num objects',NumObjects)
+        print('Num labels',NumLabels)
+        s = np.zeros((NumObjects, NumLabels))
+        supportFactor = 1.0
+
+        NumIterations = 30
+        n = 0
+        while n < NumIterations:
+            self.updateSupport(CompatType, NumObjects, NumLabels, s, p, r)
+            self.updateProbability(NumObjects, NumLabels, s, p, r, supportFactor)
+            n += 1
+        print('s', s)
+        print('p', p)
+        print('labeling from p')
+        objectToLabelMapping = np.zeros((NumObjects,1))
+        for i in range(0,NumObjects):
+            jmax = np.argmax(p[i,:])
+            objectToLabelMapping[i] = jmax
+            #print('Obj#',i,'Label# ',jmax,' Obj ',objects[i],' Label ',labels[jmax], '  p ',p[i,jmax])
+            print('Obj#',i,'Label# ',jmax,'  p ',p[i,jmax])
+            if False:
+                if np.linalg.norm(objects[i,:] - labels[jmax,:]) > 1e-4:
+                    print('probs for object i',i)
+                    print(p[i,:])
+
+        for indx,perm in enumerate(PlotPerms):
+            plt.plot(objects[:,perm[0]], objects[:,perm[1]], 'go')
+            for i in range(0,NumObjects):
+                j = int(objectToLabelMapping[i,0])
+                plt.plot([labels[j,perm[0]]], [labels[j,perm[1]]], 'r+')
+                plt.plot([labels[j,perm[0]], objects[i,perm[0]]], [labels[j,perm[1]], objects[i,perm[1]]], linewidth=1.0)
+            plt.title('Objects Labeled '+str(perm))
+            plt.show()
+            if indx >= MaxNumPlots: break
+
+
+
 identifyPoints = IdentifyPoints()
-PlotPerms = identifyPoints.twoElementPermutations(Dim)
-MaxNumPlots = 1
-print('perms ',PlotPerms)
-
-
-Noise = 0.0
-DeleteLabel = -1
-ObjectOffset = 3*np.ones((Dim))
-ShuffleObjects = False
-ObjectScale = 2.0
-RotateObjects = True
-CompatType = 3
-
-objects, labels =  identifyPoints.initPointObjectsAndLabels(Dim, NumObjects, NumLabels, Noise, DeleteLabel, ObjectOffset, ObjectScale, ShuffleObjects, RotateObjects)
-
-if CompatType == 2:
-    r, p = identifyPoints.init2DCompat(objects, labels)
-if CompatType == 3:
-    r, p = identifyPoints.init3DCompat(objects, labels)
-
-
-numPlot = 0
-for indx,perm in enumerate(PlotPerms):
-    plt.plot(labels[:,perm[0]], labels[:,perm[1]], 'ro')
-    plt.plot(objects[:,perm[0]], objects[:,perm[1]], 'g+')
-    for i in range(0,labels.shape[0]):
-        plt.plot([labels[i,perm[0]], objects[i,perm[0]]], [labels[i,perm[1]], objects[i,perm[1]]], linewidth=1.0)
-    plt.title('Objects Shuffled ' + str(perm))
-    plt.show()
-    if indx >= MaxNumPlots: break
-
-
-NumObjects = objects.shape[0]
-NumLabels = labels.shape[0]
-print('Num objects',NumObjects)
-print('Num labels',NumLabels)
-s = np.zeros((NumObjects, NumLabels))
-supportFactor = 1.0
-
-NumIterations = 30
-n = 0
-while n < NumIterations:
-    updateSupport(CompatType, NumObjects, NumLabels, s, p, r)
-    updateProbability(NumObjects, NumLabels, s, p, r, supportFactor)
-    n += 1
-print('s', s)
-print('p', p)
-print('labeling from p')
-objectToLabelMapping = np.zeros((NumObjects,1))
-for i in range(0,NumObjects):
-    jmax = np.argmax(p[i,:])
-    objectToLabelMapping[i] = jmax
-    #print('Obj#',i,'Label# ',jmax,' Obj ',objects[i],' Label ',labels[jmax], '  p ',p[i,jmax])
-    print('Obj#',i,'Label# ',jmax,'  p ',p[i,jmax])
-    if False:
-        if np.linalg.norm(objects[i,:] - labels[jmax,:]) > 1e-4:
-            print('probs for object i',i)
-            print(p[i,:])
-
-for indx,perm in enumerate(PlotPerms):
-    plt.plot(objects[:,perm[0]], objects[:,perm[1]], 'go')
-    for i in range(0,NumObjects):
-        j = int(objectToLabelMapping[i,0])
-        plt.plot([labels[j,perm[0]]], [labels[j,perm[1]]], 'r+')
-        plt.plot([labels[j,perm[0]], objects[i,perm[0]]], [labels[j,perm[1]], objects[i,perm[1]]], linewidth=1.0)
-    plt.title('Objects Labeled '+str(perm))
-    plt.show()
-    if indx >= MaxNumPlots: break
+identifyPoints.main()
