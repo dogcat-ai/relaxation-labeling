@@ -104,14 +104,14 @@ def initPointObjectsAndLabels(Dim, NumObjects, NumLabels, Noise, DeleteLabel, Ob
     if RotateObjects:
         rotated = np.zeros(objects.shape)
         mat = ortho_group.rvs(dim=Dim)
-        print 'mat'
-        print mat
+        print('mat')
+        print(mat)
 
         for i in range(0,objects.shape[0]):
             rotated[i] = np.matmul(mat, objects[i])
-            print 'i mag... object',np.linalg.norm(objects[i]),'  rotated ',np.linalg.norm(rotated[i])
-        print 'objects',objects
-        print 'rotated',rotated
+            print('i mag... object',np.linalg.norm(objects[i]),'  rotated ',np.linalg.norm(rotated[i]))
+        print('objects',objects)
+        print('rotated',rotated)
         objects = np.copy(rotated)
 
     if ShuffleObjects:
@@ -282,7 +282,7 @@ def normalizeProbability(i, p):
             p[i, :] /= sumProbability
             #sumProbability = np.sum(p[i, :])
             #if abs(sumProbability - 1.0) > 1e-6:
-            #    print ' probabiility error sumProbability = ',sumProbability
+            #    print(' probabiility error sumProbability = ',sumProbability)
             #    exit()
 
 def twoElementPermutations(Dim):
@@ -298,7 +298,7 @@ NumLabels = 10
 NumObjects = 10
 PlotPerms = twoElementPermutations(Dim)
 MaxNumPlots = 1
-print 'perms ',PlotPerms
+print('perms ',PlotPerms)
 
 
 Noise = 0.0
@@ -330,8 +330,8 @@ for indx,perm in enumerate(PlotPerms):
 
 NumObjects = objects.shape[0]
 NumLabels = labels.shape[0]
-print 'Num objects',NumObjects
-print 'Num labels',NumLabels
+print('Num objects',NumObjects)
+print('Num labels',NumLabels)
 s = np.zeros((NumObjects, NumLabels))
 supportFactor = 1.0
 
@@ -341,19 +341,19 @@ while n < NumIterations:
     updateSupport(CompatType, NumObjects, NumLabels, s, p, r)
     updateProbability(NumObjects, NumLabels, s, p, r, supportFactor)
     n += 1
-print 's', s
-print 'p', p
-print 'labeling from p'
+print('s', s)
+print('p', p)
+print('labeling from p')
 objectToLabelMapping = np.zeros((NumObjects,1))
 for i in range(0,NumObjects):
     jmax = np.argmax(p[i,:])
     objectToLabelMapping[i] = jmax
-    #print 'Obj#',i,'Label# ',jmax,' Obj ',objects[i],' Label ',labels[jmax], '  p ',p[i,jmax]
-    print 'Obj#',i,'Label# ',jmax,'  p ',p[i,jmax]
+    #print('Obj#',i,'Label# ',jmax,' Obj ',objects[i],' Label ',labels[jmax], '  p ',p[i,jmax])
+    print('Obj#',i,'Label# ',jmax,'  p ',p[i,jmax])
     if False:
         if np.linalg.norm(objects[i,:] - labels[jmax,:]) > 1e-4:
-            print 'probs for object i',i
-            print p[i,:]
+            print('probs for object i',i)
+            print(p[i,:])
 
 for indx,perm in enumerate(PlotPerms):
     plt.plot(objects[:,perm[0]], objects[:,perm[1]], 'go')
