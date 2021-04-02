@@ -12,72 +12,82 @@ from scipy.stats import ortho_group
 
 class IdentifyPoints(RelaxationLabeling):
     def __init__(self):
-        super(IdentifyPoints, self).__init__()
+        dim = 28
+        numLabels = 10
+        numObjects = 10
+        maxNumPlots = 1
 
-    def initPointObjectsAndLabels(self, Dim, NumObjects, NumLabels, Noise, DeleteLabel, ObjectOffset, ObjectScale, ShuffleObjects, RotateObjects):
-        labels = np.random.rand(NumLabels,Dim)
+        noise = 0.0
+        deleteLabel = -1
+        objectOffset = 3*np.ones((dim))
+        shuffleObjects = False
+        objectScale = 2.0
+        rotateObjects = True
+        compatType = 3
 
-        objects = np.copy(labels)
+        super(IdentifyPoints, self).__init__(dim,  numLabels, numObjects,  maxNumPlots, noise, deleteLabel, objectOffset, shuffleObjects, objectScale,  rotateObjects, compatType)
 
-        if RotateObjects:
-            rotated = np.zeros(objects.shape)
-            mat = ortho_group.rvs(dim=Dim)
+    def initPointObjectsAndLabels(self):
+        self.labels = np.random.rand(self.numLabels,self.dim)
+        self.objects = np.copy(self.labels)
+
+        if self.rotateObjects:
+            rotated = np.zeros(self.objects.shape)
+            mat = ortho_group.rvs(dim=self.dim)
             print('mat')
             print(mat)
 
-            for i in range(0,objects.shape[0]):
-                rotated[i] = np.matmul(mat, objects[i])
-                print('i mag... object',np.linalg.norm(objects[i]),'  rotated ',np.linalg.norm(rotated[i]))
-            print('objects',objects)
+            for i in range(0,self.objects.shape[0]):
+                rotated[i] = np.matmul(mat, self.objects[i])
+                print('i mag... object',np.linalg.norm(self.objects[i]),'  rotated ',np.linalg.norm(rotated[i]))
+            print('objects',self.objects)
             print('rotated',rotated)
-            objects = np.copy(rotated)
+            self.objects = np.copy(rotated)
 
-        if ShuffleObjects:
-            np.random.shuffle(objects)
+        if self.shuffleObjects:
+            np.random.shuffle(self.objects)
 
-        if Noise > 0.0:
-            noise = Noise*np.random.rand(objects.shape)
-            objects += Noise
+        if self.noise > 0.0:
+            noise = noise*np.random.rand(self.objects.shape)
+            self.objects += self.noise
 
-        if DeleteLabel >= 0:
-            labels = np.delete(labels, DeleteLabel, axis=0)
-            #objects = np.append(objects, [[50.14156, 70.7134]], axis=0)
+        if self.deleteLabel >= 0:
+            self.labels = np.delete(self.labels, self.deleteLabel, axis=0)
 
-        if ObjectOffset[0] > 0.0:
-            objects += ObjectOffset
+        if self.objectOffset[0] > 0.0:
+            self.objects += self.objectOffset
 
-        if ObjectScale != 1.0:
-            objects *= ObjectScale
+        if self.objectScale != 1.0:
+            self.objects *= self.objectScale
 
-        return objects, labels
+        return self.objects, self.labels
 
-    def init3DCompat(self, objects, labels):
 
-        NumObjects = objects.shape[0]
-        NumLabels = labels.shape[0]
-        r = np.zeros((NumObjects, NumLabels, NumObjects, NumLabels, NumObjects, NumLabels))
+    def init3DCompat(self):
+
+        self.r = np.zeros((self.numObjects, self.numLabels, self.numObjects, self.numLabels, self.numObjects, self.numLabels))
 
         epsilon = 1e-8
 
-        UseDistance = False
-        UseAngle = True
-        AngleTechnique = 3
-        for i1 in range(0,NumObjects):
-            for l1 in range(0,NumLabels):
-                for i2 in range(0,NumObjects):
-                    for l2 in range(0,NumLabels):
-                        for i3 in range(0,NumObjects):
-                            for l3 in range(0,NumLabels):
+        useDistance = False
+        useAngle = True
+        angleTechnique = 3
+        for i1 in range(0,self.numObjects):
+            for l1 in range(0,self.numLabels):
+                for i2 in range(0,self.numObjects):
+                    for l2 in range(0,self.numLabels):
+                        for i3 in range(0,self.numObjects):
+                            for l3 in range(0,self.numLabels):
                                 if False:
-                                    vobj21 = objects[i1]-objects[i2]
-                                    vobj23 = objects[i3]-objects[i2]
-                                    vlab21 = labels[l1]-labels[l2]
-                                    vlab23 = labels[l3]-labels[l2]
+                                    vobj21 = self.objects[i1]-self.objects[i2]
+                                    vobj23 = self.objects[i3]-self.objects[i2]
+                                    vlab21 = self.labels[l1]-self.labels[l2]
+                                    vlab23 = self.labels[l3]-self.labels[l2]
                                 if True:
-                                    vobj21 = objects[i2]-objects[i1]
-                                    vobj23 = objects[i3]-objects[i1]
-                                    vlab21 = labels[l2]-labels[l1]
-                                    vlab23 = labels[l3]-labels[l1]
+                                    vobj21 = self.objects[i2]-self.objects[i1]
+                                    vobj23 = self.objects[i3]-self.objects[i1]
+                                    vlab21 = self.labels[l2]-self.labels[l1]
+                                    vlab23 = self.labels[l3]-self.labels[l1]
                                 nvobj21 = np.linalg.norm(vobj21)
                                 nvobj23 = np.linalg.norm(vobj23)
                                 nvlab21 = np.linalg.norm(vlab21)
@@ -87,99 +97,76 @@ class IdentifyPoints(RelaxationLabeling):
                                     vobj23 /= nvobj23
                                     vlab21 /= nvlab21
                                     vlab23 /= nvlab23
-                                    r[i1,l1,i2,l2,i3,l3] = 1.0/(1.0+abs(np.dot(vobj21,vobj23) - np.dot(vlab21,vlab23)))
+                                    self.r[i1,l1,i2,l2,i3,l3] = 1.0/(1.0+abs(np.dot(vobj21,vobj23) - np.dot(vlab21,vlab23)))
 
-        p = np.zeros((NumObjects, NumLabels))
-        for i in range(0,NumObjects):
-            for j in range(0,NumLabels):
-                p[i,j] = 1.0/NumLabels
+        self.p = np.zeros((self.numObjects, self.numLabels))
+        for i in range(0,self.numObjects):
+            for j in range(0,self.numLabels):
+                self.p[i,j] = 1.0/self.numLabels
 
-        return r, p
+        return self.r, self.p
                     
-    def twoElementPermutations(self, Dim):
+    def twoElementPermutations(self, dim):
         perms = list()
-        for i in range(0,Dim):
-            for j in range(i+1,Dim):
+        for i in range(0,dim):
+            for j in range(i+1,dim):
                 perms += [[i,j]]
 
         return perms
 
     def main(self):
+        self.objects, self.labels = self.initPointObjectsAndLabels()
 
+        self.numObjects = self.objects.shape[0]
+        self.numLabels = self.labels.shape[0]
+        print('Num objects',self.numObjects)
+        print('Num labels',self.numLabels)
+        self.s = np.zeros((self.numObjects, self.numLabels))
 
-        Dim = 28
-        NumLabels = 10
-        NumObjects = 10
-        PlotPerms = self.twoElementPermutations(Dim)
-        MaxNumPlots = 1
-        print('perms ',PlotPerms)
+        if self.compatType == 2:
+            self.r, self.p = self.init2DCompat()
+        if self.compatType == 3:
+            self.r, self.p = self.init3DCompat()
 
-
-        Noise = 0.0
-        DeleteLabel = -1
-        ObjectOffset = 3*np.ones((Dim))
-        ShuffleObjects = False
-        ObjectScale = 2.0
-        RotateObjects = True
-        CompatType = 3
-
-        objects, labels =  self.initPointObjectsAndLabels(Dim, NumObjects, NumLabels, Noise, DeleteLabel, ObjectOffset, ObjectScale, ShuffleObjects, RotateObjects)
-
-        if CompatType == 2:
-            r, p = self.init2DCompat(objects, labels)
-        if CompatType == 3:
-            r, p = self.init3DCompat(objects, labels)
-
-
-        numPlot = 0
-        for indx,perm in enumerate(PlotPerms):
-            plt.plot(labels[:,perm[0]], labels[:,perm[1]], 'ro')
-            plt.plot(objects[:,perm[0]], objects[:,perm[1]], 'g+')
-            for i in range(0,labels.shape[0]):
-                plt.plot([labels[i,perm[0]], objects[i,perm[0]]], [labels[i,perm[1]], objects[i,perm[1]]], linewidth=1.0)
+        self.plotPerms = self.twoElementPermutations(self.dim)
+        print('perms ',self.plotPerms)
+        self.numPlot = 0
+        for indx,perm in enumerate(self.plotPerms):
+            plt.plot(self.labels[:,perm[0]], self.labels[:,perm[1]], 'ro')
+            plt.plot(self.objects[:,perm[0]], self.objects[:,perm[1]], 'g+')
+            for i in range(0,self.labels.shape[0]):
+                plt.plot([self.labels[i,perm[0]], self.objects[i,perm[0]]], [self.labels[i,perm[1]], self.objects[i,perm[1]]], linewidth=1.0)
             plt.title('Objects Shuffled ' + str(perm))
             plt.show()
-            if indx >= MaxNumPlots: break
+            if indx >= self.maxNumPlots:
+                break
 
+        for i in range(self.iterations):
+            self.iterate()
 
-        NumObjects = objects.shape[0]
-        NumLabels = labels.shape[0]
-        print('Num objects',NumObjects)
-        print('Num labels',NumLabels)
-        s = np.zeros((NumObjects, NumLabels))
-        supportFactor = 1.0
-
-        NumIterations = 30
-        n = 0
-        while n < NumIterations:
-            self.updateSupport(CompatType, NumObjects, NumLabels, s, p, r)
-            self.updateProbability(NumObjects, NumLabels, s, p, r, supportFactor)
-            n += 1
-        print('s', s)
-        print('p', p)
+        print('s', self.s)
+        print('p', self.p)
         print('labeling from p')
-        objectToLabelMapping = np.zeros((NumObjects,1))
-        for i in range(0,NumObjects):
-            jmax = np.argmax(p[i,:])
+        objectToLabelMapping = np.zeros((self.numObjects,1))
+        for i in range(0,self.numObjects):
+            jmax = np.argmax(self.p[i,:])
             objectToLabelMapping[i] = jmax
-            #print('Obj#',i,'Label# ',jmax,' Obj ',objects[i],' Label ',labels[jmax], '  p ',p[i,jmax])
-            print('Obj#',i,'Label# ',jmax,'  p ',p[i,jmax])
+            print('Obj#',i,'Label# ',jmax,'  p ',self.p[i,jmax])
             if False:
-                if np.linalg.norm(objects[i,:] - labels[jmax,:]) > 1e-4:
+                if np.linalg.norm(self.objects[i,:] - self.labels[jmax,:]) > 1e-4:
                     print('probs for object i',i)
-                    print(p[i,:])
+                    print(self.p[i,:])
 
-        for indx,perm in enumerate(PlotPerms):
-            plt.plot(objects[:,perm[0]], objects[:,perm[1]], 'go')
-            for i in range(0,NumObjects):
+        for indx,perm in enumerate(self.plotPerms):
+            plt.plot(self.objects[:,perm[0]], self.objects[:,perm[1]], 'go')
+            for i in range(0,self.numObjects):
                 j = int(objectToLabelMapping[i,0])
-                plt.plot([labels[j,perm[0]]], [labels[j,perm[1]]], 'r+')
-                plt.plot([labels[j,perm[0]], objects[i,perm[0]]], [labels[j,perm[1]], objects[i,perm[1]]], linewidth=1.0)
+                plt.plot([self.labels[j,perm[0]]], [self.labels[j,perm[1]]], 'r+')
+                plt.plot([self.labels[j,perm[0]], self.objects[i,perm[0]]], [self.labels[j,perm[1]], self.objects[i,perm[1]]], linewidth=1.0)
             plt.title('Objects Labeled '+str(perm))
             plt.show()
-            if indx >= MaxNumPlots: break
-
-
+            if indx >= self.maxNumPlots:
+                break
 
 identifyPoints = IdentifyPoints()
 identifyPoints.main()

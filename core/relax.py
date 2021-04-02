@@ -11,62 +11,78 @@ class RelaxationLabeling(object):
     # labeling of chemical molecules
     # compat speed up
     #   multiplication of vector (and or matrices) not just elements one at a time
-    def updateSupport(self, CompatType, NumObjects, NumLabels, s, p, r):
-        if CompatType == 2:
-            for i in range(0,NumObjects):
-                for l in range(0, NumLabels):
-                    s[i,l] = 0.0
-                    for j in range(0,NumObjects):
-                        for lp in range(0,NumLabels):
-                            s[i,l] += p[j,lp]*r[i,l,j,lp]
-                self.normalizeSupport(i, s)
+    
+    def __init__(self, dim, numLabels, numObjects, maxNumPlots, noise, deleteLabel, objectOffset, shuffleObjects, objectScale, rotateObjects, compatType):
+        
+        self.dim = dim
+        self.numLabels = numLabels
+        self.numObjects = numObjects
+        self.maxNumPlots = maxNumPlots
 
-        if CompatType == 3:
-            for i1 in range(0,NumObjects):
-                for l1 in range(0, NumLabels):
-                    for i2 in range(0,NumObjects):
-                        for l2 in range(0,NumLabels):
-                            for i3 in range(0,NumObjects):
-                                for l3 in range(0,NumLabels):
-                                    s[i1,l1] += p[i2,l2]*p[i3,l3]*r[i1,l1,i2,l2,i3,l3]
-
-                self.normalizeSupport(i1, s)
+        self.noise = noise
+        self.deleteLabel = deleteLabel
+        self.objectOffset = 3*np.ones((self.dim))
+        self.shuffleObjects = shuffleObjects
+        self.objectScale = objectScale
+        self.rotateObjects = rotateObjects
+        self.compatType = compatType
+        self.supportFactor = 1.0
+        self.iterations = 30
+        self.iteration = 0
 
 
-    def normalizeSupport(self, i, s):
-        minimumSupport = np.amin(s[i,:])
-        maximumSupport = np.amax(s[i,:])
+    def updateSupport(self):
+        if self.compatType == 2:
+            for i in range(0,self.numObjects):
+                for l in range(0, self.numLabels):
+                    self.s[i,l] = 0.0
+                    for j in range(0,self.numObjects):
+                        for lp in range(0,self.numLabels):
+                            self.s[i,l] += self.p[j,lp]*self.r[i,l,j,lp]
+                self.normalizeSupport(i)
+
+        if self.compatType == 3:
+            for i1 in range(0,self.numObjects):
+                for l1 in range(0, self.numLabels):
+                    for i2 in range(0,self.numObjects):
+                        for l2 in range(0,self.numLabels):
+                            for i3 in range(0,self.numObjects):
+                                for l3 in range(0,self.numLabels):
+                                    self.s[i1,l1] += self.p[i2,l2]*self.p[i3,l3]*self.r[i1,l1,i2,l2,i3,l3]
+                self.normalizeSupport(i1)
+
+    def normalizeSupport(self, i):
+        minimumSupport = np.amin(self.s[i,:])
+        maximumSupport = np.amax(self.s[i,:])
         maximumSupport -= minimumSupport
-        s[i, :] = (s[i, :] - minimumSupport)/maximumSupport
+        self.s[i, :] = (self.s[i, :] - minimumSupport)/maximumSupport
 
-
-    def updateProbability(self, NumObjects, NumLabels, s, p, r, SupportFactor):
-        Technique = 2
-        if Technique == 1:
-            for i in range(0,NumObjects):
-                for l in range(0,NumLabels):
-                    p[i,l] += s[i,l]*SupportFactor
-                self.normalizeProbability(i, p)
-        if Technique == 2:
-            for i in range(0,NumObjects):
+    def updateProbability(self):
+        technique = 2
+        if technique == 1:
+            for i in range(0,self.numObjects):
+                for l in range(0,self.numLabels):
+                    self.p[i,l] += self.s[i,l]*self.supportFactor
+                self.normalizeProbability(i)
+        if technique == 2:
+            for i in range(0,self.numObjects):
                 den = 0.0
-                for lp in range(0,NumLabels):
-                    den += p[i,lp]*(1.0+s[i,lp])
-                for l in range(0,NumLabels):
-                    p[i,l] = p[i,l]*(1.0+s[i,l])/den
-                self.normalizeProbability(i, p)
+                for lp in range(0,self.numLabels):
+                    den += self.p[i,lp]*(1.0+self.s[i,lp])
+                for l in range(0,self.numLabels):
+                    self.p[i,l] = self.p[i,l]*(1.0+self.s[i,l])/den
+                self.normalizeProbability(i)
 
+    def normalizeProbability(self, i):
+        technique = 2
+        if technique == 1 or technique == 2:
+            minProbability = np.amin(self.p[i, :])
+            self.p[i, :] -= minProbability
+            if technique == 2:
+                sumProbability = np.sum(self.p[i, :])
+                self.p[i, :] /= sumProbability
 
-    def normalizeProbability(self, i, p):
-        Technique = 2
-        if Technique == 1 or Technique == 2:
-            minProbability = np.amin(p[i, :])
-            p[i, :] -= minProbability
-            if Technique == 2:
-                sumProbability = np.sum(p[i, :])
-                p[i, :] /= sumProbability
-                #sumProbability = np.sum(p[i, :])
-                #if abs(sumProbability - 1.0) > 1e-6:
-                #    print(' probabiility error sumProbability = ',sumProbability)
-                #    exit()
+    def iterate(self):
+        self.updateSupport()
+        self.updateProbability()
 
