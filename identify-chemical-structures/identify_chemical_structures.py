@@ -45,9 +45,11 @@ class IdentifyChemicalStructure(RelaxationLabeling):
         self.edgeImage = cv2.Canny(self.image,50,150,apertureSize = 3)
 
     def doHoughLinesP(self):
-        lines = cv2.HoughLinesP(self.edgeImage,1,np.pi/180,2,0,0)
-        for line in lines:
+        #lines = cv2.HoughLinesP(self.edgeImage,1,np.pi/180,25,10,10)
+        lines = cv2.HoughLinesP(self.edgeImage,rho = 1,theta = 1*np.pi/180,threshold = 25,minLineLength = 10,maxLineGap = 10)
+        for l, line in enumerate(lines):
             for x1, y1, x2, y2 in line:
+                print("line #{}: {} {} {} {}".format(l, x1, y1, x2, y2))
                 cv2.line(self.imageColor,(x1,y1),(x2,y2),(0,0,255),2)
 
         cv2.imshow("image with hough lines", self.imageColor)
