@@ -31,53 +31,33 @@ class IdentifyChemicalStructure(RelaxationLabeling):
     def readImage(self):
         imagePath = path + "../../relaxation-labeling-supporting-files/single_bonds.jpeg"
         self.image = cv2.imread(imagePath, cv2.IMREAD_GRAYSCALE)
+        self.imageColor = cv2.imread(imagePath, cv2.IMREAD_COLOR)
         print("After initial imread, image's shape is:")
         print("\t{}".format(self.image.shape))
-        (thresh, self.image) = cv2.threshold(self.image, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-        print("After Otsu thresholding, image's shape is:")
-        print("\t{}".format(self.image.shape))
+        #(thresh, self.image) = cv2.threshold(self.image, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+        #print("After Otsu thresholding, image's shape is:")
+        #print("\t{}".format(self.image.shape))
 
         cv2.imshow("molecule with single bonds", self.image)
         cv2.waitKey()
 
     def doEdgeDetection(self):
-        sobelX = cv2.Sobel(self.image,cv2.CV_8UC1,1,0,ksize=7)
-        print("After calling Sobel, sobelX's shape is:")
-        print("\t{}".format(sobelX.shape))
-        print("sobelX:")
-        print(sobelX)
-        print("max(sobelX) = {}".format(np.max(sobelX)))
-        sobelY = cv2.Sobel(self.image,cv2.CV_64F,0,1,ksize=7)
+        self.edgeImage = cv2.Canny(self.image,50,150,apertureSize = 3)
 
-        sobelXBinary = sobelX//255
-        print("After //255, sobelXBinary is:")
-        print(sobelXBinary)
-        sobelXBinary = sobelXBinary.astype('uint8')
-        print("After converting to uint8, sobelXBinary is:")
-        print(sobelXBinary)
-        sobelYBinary = sobelY//255
-        
-        cv2.imshow("Sobel X", sobelX)
+    def doHoughLinesP(self):
+        lines = cv2.HoughLinesP(self.edgeImage,1,np.pi/180,2,0,0)
+        for line in lines:
+            for x1, y1, x2, y2 in line:
+                cv2.line(self.imageColor,(x1,y1),(x2,y2),(0,0,255),2)
+
+        cv2.imshow("image with hough lines", self.imageColor)
         cv2.waitKey()
-        cv2.imshow("Sobel Y", sobelY)
-        cv2.waitKey()
-
-        self.edgeImages = []
-        self.edgeImages.append(sobelX)
-        self.edgeImages.append(sobelY)
-
-        self.edgeImagesBinary = []
-        self.edgeImagesBinary.append(sobelXBinary)
-        self.edgeImagesBinary.append(sobelYBinary)
 
     def doHoughLines(self):
 
-        for e, edgeImage in enumerate(self.edgeImages):
-            edgeImageBinary = self.edgeImagesBinary[e]
-            print("edgeImageBinary:")
-            print(edgeImageBinary)
-            lines = cv2.HoughLines(edgeImageBinary,1,np.pi/180,200)
-            for rho,theta in lines[0]:
+        lines = cv2.HoughLines(self.edgeImage,1,np.pi/180,50)
+        for line in lines:
+            for rho,theta in line:
                 a = np.cos(theta)
                 b = np.sin(theta)
                 x0 = a*rho
@@ -87,9 +67,9 @@ class IdentifyChemicalStructure(RelaxationLabeling):
                 x2 = int(x0 - 1000*(-b))
                 y2 = int(y0 - 1000*(a))
 
-                cv2.line(edgeImage,(x1,y1),(x2,y2),(0,0,255),2)
-            cv2.imshow("edge image {}".format(e), edgeImage)
-            cv2.waitKey()
+                cv2.line(self.imageColor,(x1,y1),(x2,y2),(0,0,255),2)
+        cv2.imshow("image with hough lines", self.imageColor)
+        cv2.waitKey()
 
     def initPointObjectsAndLabels(self):
         self.labels = np.random.rand(self.numLabels,self.dim)
@@ -181,7 +161,7 @@ class IdentifyChemicalStructure(RelaxationLabeling):
     def main(self):
         self.readImage()
         self.doEdgeDetection()
-        self.doHoughLines()
+        self.doHoughLinesP()
         exit(0)
         self.objects, self.labels = self.initPointObjectsAndLabels()
 
