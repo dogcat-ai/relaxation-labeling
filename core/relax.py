@@ -30,59 +30,60 @@ class RelaxationLabeling(object):
         self.iterations = 30
         self.iteration = 0
 
-
     def updateSupport(self):
         if self.compatType == 2:
-            for i in range(0,self.numObjects):
-                for l in range(0, self.numLabels):
-                    self.s[i,l] = 0.0
-                    for j in range(0,self.numObjects):
-                        for lp in range(0,self.numLabels):
-                            self.s[i,l] += self.p[j,lp]*self.r[i,l,j,lp]
+            for i in range(self.numObjects):
+                for j in range(self.numLabels):
+                    self.support[i,j] = 0.0
+                    for k in range(self.numObjects):
+                        for l in range(self.numLabels):
+                            self.support[i,j] += self.strength[k,l]*self.compatibility[i,j,k,l]
                 self.normalizeSupport(i)
 
         if self.compatType == 3:
-            for i1 in range(0,self.numObjects):
-                for l1 in range(0, self.numLabels):
-                    for i2 in range(0,self.numObjects):
-                        for l2 in range(0,self.numLabels):
-                            for i3 in range(0,self.numObjects):
-                                for l3 in range(0,self.numLabels):
-                                    self.s[i1,l1] += self.p[i2,l2]*self.p[i3,l3]*self.r[i1,l1,i2,l2,i3,l3]
-                self.normalizeSupport(i1)
+            for i in range(self.numObjects):
+                for j in range(self.numLabels):
+                    for k in range(self.numObjects):
+                        for l in range(self.numLabels):
+                            for m in range(self.numObjects):
+                                for n in range(self.numLabels):
+                                    self.support[i,j] += self.strength[k,l]*self.strength[m,n]*self.compatibility[i,j,k,l,m,n]
+                self.normalizeSupport(i)
 
     def normalizeSupport(self, i):
-        minimumSupport = np.amin(self.s[i,:])
-        maximumSupport = np.amax(self.s[i,:])
+        minimumSupport = np.amin(self.support[i,:])
+        maximumSupport = np.amax(self.support[i,:])
         maximumSupport -= minimumSupport
-        self.s[i, :] = (self.s[i, :] - minimumSupport)/maximumSupport
+        self.support[i, :] = (self.support[i, :] - minimumSupport)/maximumSupport
 
     def updateProbability(self):
         technique = 2
         if technique == 1:
-            for i in range(0,self.numObjects):
-                for l in range(0,self.numLabels):
-                    self.p[i,l] += self.s[i,l]*self.supportFactor
+            for i in range(self.numObjects):
+                for j in range(self.numLabels):
+                    self.strength[i,j] += self.support[i,j]*self.supportFactor
                 self.normalizeProbability(i)
         if technique == 2:
-            for i in range(0,self.numObjects):
+            for i in range(self.numObjects):
                 den = 0.0
-                for lp in range(0,self.numLabels):
-                    den += self.p[i,lp]*(1.0+self.s[i,lp])
-                for l in range(0,self.numLabels):
-                    self.p[i,l] = self.p[i,l]*(1.0+self.s[i,l])/den
+                for j in range(0,self.numLabels):
+                    den += self.strength[i,j]*(1.0+self.support[i,j])
+                for j in range(0,self.numLabels):
+                    self.strength[i,j] = self.strength[i,j]*(1.0+self.support[i,j])/den
                 self.normalizeProbability(i)
 
     def normalizeProbability(self, i):
         technique = 2
         if technique == 1 or technique == 2:
-            minProbability = np.amin(self.p[i, :])
-            self.p[i, :] -= minProbability
+            minProbability = np.amin(self.strength[i, :])
+            self.strength[i, :] -= minProbability
             if technique == 2:
-                sumProbability = np.sum(self.p[i, :])
-                self.p[i, :] /= sumProbability
+                sumProbability = np.sum(self.strength[i, :])
+                self.strength[i, :] /= sumProbability
 
     def iterate(self):
+        print("iteration {}".format(self.iteration))
         self.updateSupport()
         self.updateProbability()
+        self.iteration += 1
 
