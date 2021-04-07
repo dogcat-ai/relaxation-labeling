@@ -1,6 +1,6 @@
 import os
 import sys
-user = "priyabapat"
+user = "mannyglover"
 path = "/Users/" + user + "/Code/relaxation-labeling/core/"
 sys.path.append(os.path.dirname(path))
 print(sys.path)
@@ -24,8 +24,10 @@ class IdentifyPoints(RelaxationLabeling):
         objectScale = 2.0
         rotateObjects = True
         compatType = 3
+        save = True
 
-        super(IdentifyPoints, self).__init__(dim,  numLabels, numObjects,  maxNumPlots, noise, deleteLabel, objectOffset, shuffleObjects, objectScale,  rotateObjects, compatType)
+        super(IdentifyPoints, self).__init__(dim,  numLabels, numObjects,  maxNumPlots, noise, deleteLabel, objectOffset, shuffleObjects, objectScale,  rotateObjects, compatType, save)
+        self.doPermutations = True
 
     def initPointObjectsAndLabels(self):
         self.labels = np.random.rand(self.numLabels,self.dim)
@@ -60,34 +62,38 @@ class IdentifyPoints(RelaxationLabeling):
         if self.objectScale != 1.0:
             self.objects *= self.objectScale
 
-        return self.objects, self.labels
+        self.numObjects = len(self.objects)
+        self.numLabels = len(self.labels)
 
 
-    def init3DCompat(self):
+    def calculateCompatibility(self):
+        if self.compatType == 2:
+            self.calculate2DCompatibility()
+        if self.compatType == 3:
+            self.calculate3DCompatibility()
 
-        self.r = np.zeros((self.numObjects, self.numLabels, self.numObjects, self.numLabels, self.numObjects, self.numLabels))
-
+    def calculate3DCompatibility(self):
+        self.compatibility = np.zeros((self.numObjects, self.numLabels, self.numObjects, self.numLabels, self.numObjects, self.numLabels))
         epsilon = 1e-8
-
         useDistance = False
         useAngle = True
         angleTechnique = 3
-        for i1 in range(0,self.numObjects):
-            for l1 in range(0,self.numLabels):
-                for i2 in range(0,self.numObjects):
-                    for l2 in range(0,self.numLabels):
-                        for i3 in range(0,self.numObjects):
-                            for l3 in range(0,self.numLabels):
+        for i in range(self.numObjects):
+            for j in range(self.numLabels):
+                for k in range(self.numObjects):
+                    for l in range(self.numLabels):
+                        for m in range(self.numObjects):
+                            for n in range(self.numLabels):
                                 if False:
-                                    vobj21 = self.objects[i1]-self.objects[i2]
-                                    vobj23 = self.objects[i3]-self.objects[i2]
-                                    vlab21 = self.labels[l1]-self.labels[l2]
-                                    vlab23 = self.labels[l3]-self.labels[l2]
+                                    vobj21 = self.objects[i]-self.objects[k]
+                                    vobj23 = self.objects[m]-self.objects[k]
+                                    vlab21 = self.labels[j]-self.labels[l]
+                                    vlab23 = self.labels[n]-self.labels[l]
                                 if True:
-                                    vobj21 = self.objects[i2]-self.objects[i1]
-                                    vobj23 = self.objects[i3]-self.objects[i1]
-                                    vlab21 = self.labels[l2]-self.labels[l1]
-                                    vlab23 = self.labels[l3]-self.labels[l1]
+                                    vobj21 = self.objects[k]-self.objects[i]
+                                    vobj23 = self.objects[m]-self.objects[i]
+                                    vlab21 = self.labels[l]-self.labels[j]
+                                    vlab23 = self.labels[n]-self.labels[j]
                                 nvobj21 = np.linalg.norm(vobj21)
                                 nvobj23 = np.linalg.norm(vobj23)
                                 nvlab21 = np.linalg.norm(vlab21)
@@ -97,15 +103,8 @@ class IdentifyPoints(RelaxationLabeling):
                                     vobj23 /= nvobj23
                                     vlab21 /= nvlab21
                                     vlab23 /= nvlab23
-                                    self.r[i1,l1,i2,l2,i3,l3] = 1.0/(1.0+abs(np.dot(vobj21,vobj23) - np.dot(vlab21,vlab23)))
+                                    self.compatibility[i,j,k,l,m,n] = 1.0/(1.0+abs(np.dot(vobj21,vobj23) - np.dot(vlab21,vlab23)))
 
-        self.p = np.zeros((self.numObjects, self.numLabels))
-        for i in range(0,self.numObjects):
-            for j in range(0,self.numLabels):
-                self.p[i,j] = 1.0/self.numLabels
-
-        return self.r, self.p
-                    
     def twoElementPermutations(self, dim):
         perms = list()
         for i in range(0,dim):
@@ -114,20 +113,7 @@ class IdentifyPoints(RelaxationLabeling):
 
         return perms
 
-    def main(self):
-        self.objects, self.labels = self.initPointObjectsAndLabels()
-
-        self.numObjects = self.objects.shape[0]
-        self.numLabels = self.labels.shape[0]
-        print('Num objects',self.numObjects)
-        print('Num labels',self.numLabels)
-        self.s = np.zeros((self.numObjects, self.numLabels))
-
-        if self.compatType == 2:
-            self.r, self.p = self.init2DCompat()
-        if self.compatType == 3:
-            self.r, self.p = self.init3DCompat()
-
+    def permutatePre(self):
         self.plotPerms = self.twoElementPermutations(self.dim)
         print('perms ',self.plotPerms)
         self.numPlot = 0
@@ -141,32 +127,29 @@ class IdentifyPoints(RelaxationLabeling):
             if indx >= self.maxNumPlots:
                 break
 
-        for i in range(self.iterations):
-            self.iterate()
-
-        print('s', self.s)
-        print('p', self.p)
-        print('labeling from p')
-        objectToLabelMapping = np.zeros((self.numObjects,1))
-        for i in range(0,self.numObjects):
-            jmax = np.argmax(self.p[i,:])
-            objectToLabelMapping[i] = jmax
-            print('Obj#',i,'Label# ',jmax,'  p ',self.p[i,jmax])
-            if False:
-                if np.linalg.norm(self.objects[i,:] - self.labels[jmax,:]) > 1e-4:
-                    print('probs for object i',i)
-                    print(self.p[i,:])
-
+    def permutatePost(self):
         for indx,perm in enumerate(self.plotPerms):
             plt.plot(self.objects[:,perm[0]], self.objects[:,perm[1]], 'go')
             for i in range(0,self.numObjects):
-                j = int(objectToLabelMapping[i,0])
+                j = int(self.objectToLabelMapping[i,0])
                 plt.plot([self.labels[j,perm[0]]], [self.labels[j,perm[1]]], 'r+')
                 plt.plot([self.labels[j,perm[0]], self.objects[i,perm[0]]], [self.labels[j,perm[1]], self.objects[i,perm[1]]], linewidth=1.0)
             plt.title('Objects Labeled '+str(perm))
             plt.show()
             if indx >= self.maxNumPlots:
                 break
+
+    def main(self):
+        self.initPointObjectsAndLabels()
+
+        if self.doPermutations:
+            self.permutatePre()
+
+        super(IdentifyPoints, self).main()
+
+        if self.doPermutations:
+            self.permutatePost()
+
 
 identifyPoints = IdentifyPoints()
 identifyPoints.main()

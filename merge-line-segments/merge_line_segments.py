@@ -1,6 +1,6 @@
 import os
 import sys
-user = "priyabapat"
+user = "mannyglover"
 path = "/Users/" + user + "/Code/relaxation-labeling/core/"
 sys.path.append(os.path.dirname(path))
 print(sys.path)
@@ -17,7 +17,6 @@ class MergeLineSegments(RelaxationLabeling):
         numLabels = 10
         numObjects = 10
         maxNumPlots = 1
-
         noise = 0.0
         deleteLabel = -1
         objectOffset = 3*np.ones((dim))
@@ -25,11 +24,10 @@ class MergeLineSegments(RelaxationLabeling):
         objectScale = 2.0
         rotateObjects = True
         compatType = 3
-
         super(MergeLineSegments, self).__init__(dim,  numLabels, numObjects,  maxNumPlots, noise, deleteLabel, objectOffset, shuffleObjects, objectScale,  rotateObjects, compatType)
 
     def readImage(self):
-        imagePath = path + "../../relaxation-labeling-supporting-files/single_bonds.jpeg"
+        imagePath = path + "../../relaxation-labeling-supporting-files/triangular-bond-w-1-offshoot.jpeg"
         self.image = cv2.imread(imagePath, cv2.IMREAD_GRAYSCALE)
         self.imageColor = cv2.imread(imagePath, cv2.IMREAD_COLOR)
         print("After initial imread, image's shape is:")
@@ -37,7 +35,6 @@ class MergeLineSegments(RelaxationLabeling):
         #(thresh, self.image) = cv2.threshold(self.image, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
         #print("After Otsu thresholding, image's shape is:")
         #print("\t{}".format(self.image.shape))
-
         cv2.imshow("molecule with single bonds", self.image)
         cv2.waitKey()
 
@@ -46,7 +43,8 @@ class MergeLineSegments(RelaxationLabeling):
 
     def doHoughLinesP(self):
         #lines = cv2.HoughLinesP(self.edgeImage,1,np.pi/180,25,10,10)
-        self.lines = cv2.HoughLinesP(self.edgeImage,rho = 1,theta = 1*np.pi/180,threshold = 25,minLineLength = 10,maxLineGap = 10)
+        #self.lines = cv2.HoughLinesP(self.edgeImage,rho = 1,theta = 1*np.pi/180,threshold = 25,minLineLength = 10,maxLineGap = 10)
+        self.lines = cv2.HoughLinesP(self.edgeImage,rho = 1,theta = 1*np.pi/180,threshold = 10,minLineLength = 5,maxLineGap = 10)
         for l, line in enumerate(self.lines):
             for x1, y1, x2, y2 in line:
                 print("line #{}: {} {} {} {}".format(l, x1, y1, x2, y2))
@@ -56,7 +54,6 @@ class MergeLineSegments(RelaxationLabeling):
         cv2.waitKey()
 
     def doHoughLines(self):
-
         lines = cv2.HoughLines(self.edgeImage,1,np.pi/180,50)
         for line in lines:
             for rho,theta in line:
@@ -68,7 +65,6 @@ class MergeLineSegments(RelaxationLabeling):
                 y1 = int(y0 + 1000*(a))
                 x2 = int(x0 - 1000*(-b))
                 y2 = int(y0 - 1000*(a))
-
                 cv2.line(self.imageColor,(x1,y1),(x2,y2),(0,0,255),2)
         cv2.imshow("image with hough lines", self.imageColor)
         cv2.waitKey()
@@ -105,52 +101,22 @@ class MergeLineSegments(RelaxationLabeling):
         self.r = np.zeros((self.numObjects, self.numLabels, self.numObjects, self.numLabels, self.numObjects, self.numLabels))
         for i, iObject in enumerate(self.objects):
             for j, jLabel in enumerate(self.labels):
+                if i != j:
+                    continue
                 for k, kObject in enumerate(self.objects):
+                    if i == k:
+                        continue
                     for l, lLabel in enumerate(self.labels):
+                        if k != l:
+                            continue
                         self.calculateOrientationCompatibility(i, k)
                         self.calculateProximityCompatibility(i, k)
                         self.r[i, j, k, l] = 0.5*self.orientationCompatibility[i, j, k, l] + 0.5*self.proximityCompatibility[i, j, k, l]
-            
-
-    def initStrengthAndSupport(self):
-        self.p = np.ones(shape = [self.numObjects, self.numLabels])*1/self.numLabels
-        self.s = np.zeros(shape = [self.numObjects, self.numLabels])
-
-                    
-    def twoElementPermutations(self, dim):
-        perms = list()
-        for i in range(0,dim):
-            for j in range(i+1,dim):
-                perms += [[i,j]]
-
-        return perms
 
     def main(self):
-
         self.initLineSegmentObjectsAndLabels()
-        print("objects:")
-        print(self.objects)
-        print("labels:")
-        print(self.labels)
-        self.calculateCompatibility()
-        self.initStrengthAndSupport()
-        print('Num objects',self.numObjects)
-        print('Num labels',self.numLabels)
-        for i in range(self.iterations):
-            self.iterate()
+        super(MergeLineSegments, self).main()
 
-        print('s', self.s)
-        print('p', self.p)
-        print('labeling from p')
-        objectToLabelMapping = np.zeros((self.numObjects,1))
-        for i in range(0,self.numObjects):
-            jmax = np.argmax(self.p[i,:])
-            objectToLabelMapping[i] = jmax
-            print('Obj#',i,'Label# ',jmax,'  p ',self.p[i,jmax])
-            if False:
-                if np.linalg.norm(self.objects[i,:] - self.labels[jmax,:]) > 1e-4:
-                    print('probs for object i',i)
-                    print(self.p[i,:])
 
 mergeLineSegments = MergeLineSegments()
 mergeLineSegments.main()

@@ -12,13 +12,11 @@ class RelaxationLabeling(object):
     # compat speed up
     #   multiplication of vector (and or matrices) not just elements one at a time
     
-    def __init__(self, dim, numLabels, numObjects, maxNumPlots, noise, deleteLabel, objectOffset, shuffleObjects, objectScale, rotateObjects, compatType):
-        
+    def __init__(self, dim, numLabels, numObjects, maxNumPlots, noise, deleteLabel, objectOffset, shuffleObjects, objectScale, rotateObjects, compatType, save):
         self.dim = dim
         self.numLabels = numLabels
         self.numObjects = numObjects
         self.maxNumPlots = maxNumPlots
-
         self.noise = noise
         self.deleteLabel = deleteLabel
         self.objectOffset = 3*np.ones((self.dim))
@@ -26,9 +24,14 @@ class RelaxationLabeling(object):
         self.objectScale = objectScale
         self.rotateObjects = rotateObjects
         self.compatType = compatType
+        self.save = save
         self.supportFactor = 1.0
         self.iterations = 30
         self.iteration = 0
+
+    def initStrengthAndSupport(self):
+        self.strength = np.ones(shape = [self.numObjects, self.numLabels])*1/self.numLabels
+        self.support = np.zeros(shape = [self.numObjects, self.numLabels])
 
     def updateSupport(self):
         if self.compatType == 2:
@@ -39,7 +42,6 @@ class RelaxationLabeling(object):
                         for l in range(self.numLabels):
                             self.support[i,j] += self.strength[k,l]*self.compatibility[i,j,k,l]
                 self.normalizeSupport(i)
-
         if self.compatType == 3:
             for i in range(self.numObjects):
                 for j in range(self.numLabels):
@@ -56,13 +58,13 @@ class RelaxationLabeling(object):
         maximumSupport -= minimumSupport
         self.support[i, :] = (self.support[i, :] - minimumSupport)/maximumSupport
 
-    def updateProbability(self):
+    def updateStrength(self):
         technique = 2
         if technique == 1:
             for i in range(self.numObjects):
                 for j in range(self.numLabels):
                     self.strength[i,j] += self.support[i,j]*self.supportFactor
-                self.normalizeProbability(i)
+                self.normalizeStrength(i)
         if technique == 2:
             for i in range(self.numObjects):
                 den = 0.0
@@ -70,20 +72,68 @@ class RelaxationLabeling(object):
                     den += self.strength[i,j]*(1.0+self.support[i,j])
                 for j in range(0,self.numLabels):
                     self.strength[i,j] = self.strength[i,j]*(1.0+self.support[i,j])/den
-                self.normalizeProbability(i)
+                self.normalizeStrength(i)
 
-    def normalizeProbability(self, i):
+    def normalizeStrength(self, i):
         technique = 2
         if technique == 1 or technique == 2:
-            minProbability = np.amin(self.strength[i, :])
-            self.strength[i, :] -= minProbability
+            minStrength = np.amin(self.strength[i, :])
+            self.strength[i, :] -= minStrength
             if technique == 2:
-                sumProbability = np.sum(self.strength[i, :])
-                self.strength[i, :] /= sumProbability
+                sumStrength = np.sum(self.strength[i, :])
+                self.strength[i, :] /= sumStrength
 
     def iterate(self):
+        if self.save and self.iteration == 0:
+            self.saveCompatibility()
         print("iteration {}".format(self.iteration))
         self.updateSupport()
-        self.updateProbability()
+        self.updateStrength()
         self.iteration += 1
+
+    def assign(self):
+        print('labeling from strength')
+        self.objectToLabelMapping = np.zeros((self.numObjects,1))
+        for i in range(0,self.numObjects):
+            jmax = np.argmax(self.strength[i,:])
+            self.objectToLabelMapping[i] = jmax
+            print('Obj#',i,' Label# ',jmax,'strength ',self.strength[i,jmax])
+            if False:
+                if np.linalg.norm(self.objects[i,:] - self.labels[jmax,:]) > 1e-4:
+                    print('strengths for object i',i)
+                    print(self.strength[i,:])
+
+    def saveCompatibility(self):
+        compatibilityFile = open('compatibility.csv', 'w')
+        compatibilityText = ''
+        for i in range(self.numObjects):
+            for j in range(self.numLabels):
+                # One column in header row:
+                compatibilityText += ',' + '[' + str(i) + ']' + '[' + str(j) + ']'
+        for i in range(self.numObjects):
+            for j in range(self.numLabels):
+                compatibilityText += '\n'
+                for k in range(self.numObjects):
+                    for l in range(self.numLabels):
+                        # One row in header column:
+                        compatibilityText += ',' + '[' + str(k) + ']' + '[' + str(l) + ']'
+                        # One compatibility value:
+                        compatibilityText += ',' + str(self.compatibility[i,j,k,l])
+        compatibilityFile.write(compatibilityText)
+        compatibilityFile.close()
+
+    def main(self):
+        print("objects:")
+        print(self.objects)
+        print("labels:")
+        print(self.labels)
+        self.calculateCompatibility()
+        self.initStrengthAndSupport()
+        print('Num objects', self.numObjects)
+        print('Num labels', self.numLabels)
+        for i in range(self.iterations):
+            self.iterate()
+        print('support', self.support)
+        print('strength', self.strength)
+        self.assign()
 
