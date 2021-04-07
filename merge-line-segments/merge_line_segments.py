@@ -14,17 +14,16 @@ from scipy.stats import ortho_group
 class MergeLineSegments(RelaxationLabeling):
     def __init__(self):
         dim = 28
-        numLabels = 10
-        numObjects = 10
         maxNumPlots = 1
         noise = 0.0
         deleteLabel = -1
         objectOffset = 3*np.ones((dim))
         shuffleObjects = False
         objectScale = 2.0
-        rotateObjects = True
-        compatType = 3
-        super(MergeLineSegments, self).__init__(dim,  numLabels, numObjects,  maxNumPlots, noise, deleteLabel, objectOffset, shuffleObjects, objectScale,  rotateObjects, compatType)
+        rotateObjects = False
+        compatType = 2
+        save = True
+        super(MergeLineSegments, self).__init__(dim, maxNumPlots, noise, deleteLabel, objectOffset, shuffleObjects, objectScale, rotateObjects, compatType, save)
 
     def readImage(self):
         imagePath = path + "../../relaxation-labeling-supporting-files/triangular-bond-w-1-offshoot.jpeg"
@@ -96,22 +95,16 @@ class MergeLineSegments(RelaxationLabeling):
         self.proximityCompatibility[i, k, k, i] = 3 - shortest
 
     def calculateCompatibility(self):
-        self.orientationCompatibility = np.zeros((self.numObjects, self.numLabels, self.numObjects, self.numLabels, self.numObjects, self.numLabels))
-        self.proximityCompatibility = np.zeros((self.numObjects, self.numLabels, self.numObjects, self.numLabels, self.numObjects, self.numLabels))
-        self.r = np.zeros((self.numObjects, self.numLabels, self.numObjects, self.numLabels, self.numObjects, self.numLabels))
+        self.orientationCompatibility = np.zeros((self.numObjects, self.numLabels, self.numObjects, self.numLabels))
+        self.proximityCompatibility = np.zeros((self.numObjects, self.numLabels, self.numObjects, self.numLabels))
+        self.compatibility = np.zeros((self.numObjects, self.numLabels, self.numObjects, self.numLabels))
         for i, iObject in enumerate(self.objects):
             for j, jLabel in enumerate(self.labels):
-                if i != j:
-                    continue
                 for k, kObject in enumerate(self.objects):
-                    if i == k:
-                        continue
                     for l, lLabel in enumerate(self.labels):
-                        if k != l:
-                            continue
                         self.calculateOrientationCompatibility(i, k)
                         self.calculateProximityCompatibility(i, k)
-                        self.r[i, j, k, l] = 0.5*self.orientationCompatibility[i, j, k, l] + 0.5*self.proximityCompatibility[i, j, k, l]
+                        self.compatibility[i, j, k, l] = 0.5*self.orientationCompatibility[i, j, k, l] + 0.5*self.proximityCompatibility[i, j, k, l]
 
     def main(self):
         self.initLineSegmentObjectsAndLabels()

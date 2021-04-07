@@ -12,10 +12,8 @@ class RelaxationLabeling(object):
     # compat speed up
     #   multiplication of vector (and or matrices) not just elements one at a time
     
-    def __init__(self, dim, numLabels, numObjects, maxNumPlots, noise, deleteLabel, objectOffset, shuffleObjects, objectScale, rotateObjects, compatType, save):
+    def __init__(self, dim, maxNumPlots, noise, deleteLabel, objectOffset, shuffleObjects, objectScale, rotateObjects, compatType, save):
         self.dim = dim
-        self.numLabels = numLabels
-        self.numObjects = numObjects
         self.maxNumPlots = maxNumPlots
         self.noise = noise
         self.deleteLabel = deleteLabel
@@ -112,11 +110,10 @@ class RelaxationLabeling(object):
                 compatibilityText += ',' + '[' + str(i) + ']' + '[' + str(j) + ']'
         for i in range(self.numObjects):
             for j in range(self.numLabels):
-                compatibilityText += '\n'
+                # One row in header column:
+                compatibilityText += '\n' + '[' + str(i) + ']' + '[' + str(j) + ']'
                 for k in range(self.numObjects):
                     for l in range(self.numLabels):
-                        # One row in header column:
-                        compatibilityText += ',' + '[' + str(k) + ']' + '[' + str(l) + ']'
                         # One compatibility value:
                         compatibilityText += ',' + str(self.compatibility[i,j,k,l])
         compatibilityFile.write(compatibilityText)
