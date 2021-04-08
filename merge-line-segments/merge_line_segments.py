@@ -1,6 +1,6 @@
 import os
 import sys
-user = "mannyglover"
+user = "priyabapat"
 path = "/Users/" + user + "/Code/relaxation-labeling/core/"
 sys.path.append(os.path.dirname(path))
 print(sys.path)
@@ -26,7 +26,8 @@ class MergeLineSegments(RelaxationLabeling):
         super(MergeLineSegments, self).__init__(dim, maxNumPlots, noise, deleteLabel, objectOffset, shuffleObjects, objectScale, rotateObjects, compatType, save)
 
     def readImage(self):
-        imagePath = path + "../../relaxation-labeling-supporting-files/triangular-bond-w-1-offshoot.jpeg"
+        #imagePath = path + "../../relaxation-labeling-supporting-files/triangular-bond-w-1-offshoot.jpeg"
+        imagePath = path + "../../relaxation-labeling-supporting-files/single_bonds.jpeg"
         self.image = cv2.imread(imagePath, cv2.IMREAD_GRAYSCALE)
         self.imageColor = cv2.imread(imagePath, cv2.IMREAD_COLOR)
         print("After initial imread, image's shape is:")
@@ -42,8 +43,8 @@ class MergeLineSegments(RelaxationLabeling):
 
     def doHoughLinesP(self):
         #lines = cv2.HoughLinesP(self.edgeImage,1,np.pi/180,25,10,10)
-        #self.lines = cv2.HoughLinesP(self.edgeImage,rho = 1,theta = 1*np.pi/180,threshold = 25,minLineLength = 10,maxLineGap = 10)
-        self.lines = cv2.HoughLinesP(self.edgeImage,rho = 1,theta = 1*np.pi/180,threshold = 10,minLineLength = 5,maxLineGap = 10)
+        self.lines = cv2.HoughLinesP(self.edgeImage,rho = 1,theta = 1*np.pi/180,threshold = 25,minLineLength = 10,maxLineGap = 10)
+        #self.lines = cv2.HoughLinesP(self.edgeImage,rho = 1,theta = 1*np.pi/180,threshold = 10,minLineLength = 5,maxLineGap = 10)
         for l, line in enumerate(self.lines):
             for x1, y1, x2, y2 in line:
                 print("line #{}: {} {} {} {}".format(l, x1, y1, x2, y2))
@@ -73,26 +74,103 @@ class MergeLineSegments(RelaxationLabeling):
         self.doEdgeDetection()
         self.doHoughLinesP()
         self.objects = np.zeros(shape = [len(self.lines), 4])
+        self.objectDistances = np.zeros(shape = [len(self.lines)])
         for l, line in enumerate(self.lines):
             self.objects[l] = line[0]
+            self.objectDistances[l] = np.linalg.norm(self.objects[l, 0:2]-self.objects[l, 2:])
         self.labels = self.objects
+        self.labelDistances  = self.objectDistances
         self.numObjects = len(self.objects)
         self.numLabels = len(self.labels)
 
-    def calculateOrientationCompatibility(self, i, k):
+    def calculateOrientationCompatibility(self, i, j, k, l):
         iObject = self.objects[i]
+        jLabel = self.labels[j]
         kObject = self.objects[k]
-        self.orientationCompatibility[i, k, k, i] = np.dot(iObject, kObject)
+        lLabel = self.labels[l]
+        ijCompatibility = np.dot(iObject, jLabel)/(self.objectDistances[i]*self.labelDistances[j])
+        klCompatibility = np.dot(kObject, lLabel)/(self.objectDistances[k]*self.labelDistances[l])
+        self.compatibility[i, j, k, l] = 0.5*ijCompatibility + 0.5*klCompatibility
 
-    def calculateProximityCompatibility(self, i, k):
+    def calculateOrientationCompatibilityVerbose(self, i, j, k, l):
+        iObject = self.objects[i]
+        jLabel = self.labels[j]
+        kObject = self.objects[k]
+        lLabel = self.labels[l]
+        ijCompatibility = np.dot(iObject, jLabel)/(self.objectDistances[i]*self.labelDistances[j])
+        ilCompatibility = np.dot(iObject, lLabel)/(self.objectDistances[i]*self.labelDistances[l])
+        klCompatibility = np.dot(kObject, lLabel)/(self.objectDistances[k]*self.labelDistances[l])
+        kjCompatibility = np.dot(kObject, jLabel)/(self.objectDistances[k]*self.labelDistances[j])
+        # If object i is compatible with label j and object k is compatible with label j,
+        # that is evidence that object i and object k belong to the same line segment.
+        # So compatibility(i, j, k, j) should be high.
+        # One way to express this mathematically is compatibility(i, j, k, j) = 0.5*ijCompatibility + 0.5*kjCompatibility
+        # If object i is compatible with label j and object k is compatible with label l,
+        # that is evidence that object i should have label j and object k should have label l, but not necessarily
+        # that object i and object k go together.
+        # If object i is compatible with label l and object k is compatible with label l,
+        # that is evidence that object i and object k belong to the same line segment.
+        # So compatibility(i, l, k, l) should be high.
+        # One way to express this mathematically is compatibility(i, l, k, l) = 0.5*ilCompatibility + 0.5*klCompatibility
+        self.compatibility[i, j, k, j] = 0.5*ijCompatibility + 0.5*kjCompatibility
+        self.compatibility[i, l, k, l] = 0.5*ilCompatibility + 0.5*klCompatibility
+        self.compatibility[i, j, k, l] = 0.5*ijCompatibility + 0.5*klCompatibility
+        self.compatibility[i, l, k, j] = 0.5*ilCompatibility + 0.5*kjCompatibility
+        self.compatibility[i, j, i, j] = ijCompatibility
+        # If object i is compatible with label j and object k is compatible with label l,
+        # that tells us that i could be j, and k could be l,
+        # but what does it tell us about the compatibility of i being j AND k being l?
+        # Does it tell us anything?
+        # I suppose it at least tells us that this assignment is reasonable,
+        # but I fear it will counter the merging we are trying to accomplish.
+        # In my illustration, I say that compatibility(1, 1, 2, 2) should be low,
+        # because we want 2 to belong to 1, or 1 to belong to 2,
+        # but we don't want them to be independent.
+        # But I don't think we want this compatibility to be negative.
+        # Perhaps it should be zero?
+        # We could express this mathematically with compatibility(i, j, k, l) = ijCompatibility - klCompatibility.
+        # What does the above equation imply?  If ijCompatibility is high and klCompatibility is high,
+        # the total compatibility is close to zero.
+        # If ijCompatibility is high and klCompatibility is low,
+        # the total compatibility is high.
+        # But do we want this?
+        # I think we do want this.
+        # Because what it means is that i likes j, and k doesn't like l.
+        # No, we don't want this.
+        # If i likes j and k doesn't like l,
+        # then the compatibility of (i,j,k,l) should be halfway between good and bad.
+        # Mathematically, compatibility(i, j, k, l) = 0.5*ijCompatibility + 0.5*klCompatibility
+
+
+    def calculateProximityCompatibility(self, i, j, k, l):
+        # If the labels are identical, we want the objects to be close.
+        # Otherwise, we want the objects to be close only if the labels are close.
+        # We can express this mathematically like:
+        #   if (j == l):
+        #       compatibility = Constant - minDist(i, k)
+        #   else:
+        #       compatibility(i, j, k, l) = minDist(i, k) - minDist(j, l)
+        # or:
+        #       compatibility(i, j, k, l) = minDist(i, k)*minDist(j, l)?
+
         iObject = self.objects[i]
         kObject = self.objects[k]
         distance12 = np.linalg.norm(iObject[0:2] - kObject[2:])
         distance11 = np.linalg.norm(iObject[0:2] - kObject[0:2])
         distance21 = np.linalg.norm(iObject[2:] - kObject[0:2])
         distance22 = np.linalg.norm(iObject[2:] - kObject[2:])
-        shortest = min(distance12, distance11, distance21, distance22)
-        self.proximityCompatibility[i, k, k, i] = 3 - shortest
+        ikShortest = min(distance12, distance11, distance21, distance22)
+        if j == l:
+            self.proximityCompatibility[i, j, k, l] = 3 - ikShortest
+        else:
+            jLabel = self.labels[j]
+            lLabel = self.labels[l]
+            distance12 = np.linalg.norm(jLabel[0:2] - lLabel[2:])
+            distance11 = np.linalg.norm(jLabel[0:2] - lLabel[0:2])
+            distance21 = np.linalg.norm(jLabel[2:] - lLabel[0:2])
+            distance22 = np.linalg.norm(jLabel[2:] - lLabel[2:])
+            jlShortest = min(distance12, distance11, distance21, distance22)
+            self.proximityCompatibility[i, j, k, l] = abs(ikShortest - jlShortest)
 
     def calculateCompatibility(self):
         self.orientationCompatibility = np.zeros((self.numObjects, self.numLabels, self.numObjects, self.numLabels))
@@ -102,8 +180,8 @@ class MergeLineSegments(RelaxationLabeling):
             for j, jLabel in enumerate(self.labels):
                 for k, kObject in enumerate(self.objects):
                     for l, lLabel in enumerate(self.labels):
-                        self.calculateOrientationCompatibility(i, k)
-                        self.calculateProximityCompatibility(i, k)
+                        self.calculateOrientationCompatibility(i, j, k, l)
+                        self.calculateProximityCompatibility(i, j, k, l)
                         self.compatibility[i, j, k, l] = 0.5*self.orientationCompatibility[i, j, k, l] + 0.5*self.proximityCompatibility[i, j, k, l]
 
     def main(self):
