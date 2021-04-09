@@ -29,3 +29,14 @@ compatibility(object i, label SAME, object k, label SAME)
 compatibility(object i, label DIFFERENT, object k, label DIFFERENT)
 
 I'm not quite sure how I could implement the above, though...
+
+2021-04-07
+
+Thinking again about how to set up the compatibility function here.
+
+There is a figure drawn in my notebook which I can't depict here.  But I'll assume the reader has access to it.
+
+compatibility(1, 1, 2, 1) should be high, saying that line segment 1 can be labeled as line segment 1, and line segment 2 can be labeled as line segment 1.
+compatibility(1, 2, 2, 2) should be high, saying that line segment 1 can be labeled as line segment 2, and line segment 2 can be labeled as line segment 2.
+compatibility(1, 1, 2, 2) should be low, because this is saying that the line segments are not part of the same line segment, when in fact they are.
+compatibility(1, 1, 1, 1) should be high
