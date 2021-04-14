@@ -1,8 +1,9 @@
 import os
 import sys
-user = "mannyglover"
-path = "/Users/" + user + "/Code/relaxation-labeling/core/"
-sys.path.append(os.path.dirname(path))
+#user = "mannyglover"
+#path = "/Users/" + user + "/Code/relaxation-labeling/core/"
+path = "~/Code/relaxation-labeling/core/"
+sys.path.append(os.path.dirname(os.path.expanduser(path)))
 print(sys.path)
 from relax import RelaxationLabeling
 
@@ -27,7 +28,7 @@ class MergeLineSegments(RelaxationLabeling):
 
     def readImage(self):
         #imagePath = path + "../../relaxation-labeling-supporting-files/triangular-bond-w-1-offshoot.jpeg"
-        imagePath = path + "../../relaxation-labeling-supporting-files/single_bonds.jpeg"
+        imagePath = os.path.expanduser("~/Code/relaxation-labeling-supporting-files/single_bonds.jpeg")
         self.image = cv2.imread(imagePath, cv2.IMREAD_GRAYSCALE)
         self.imageColor = cv2.imread(imagePath, cv2.IMREAD_COLOR)
         print("After initial imread, image's shape is:")

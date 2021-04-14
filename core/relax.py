@@ -101,7 +101,7 @@ class RelaxationLabeling(object):
                     print('strengths for object i',i)
                     print(self.strength[i,:])
 
-    def saveCompatibility(self):
+    def saveCompatibility(self, compatibilityFilename, compatibility):
         compatibilityFile = open('compatibility.csv', 'w')
         compatibilityText = ''
         for i in range(self.numObjects):
