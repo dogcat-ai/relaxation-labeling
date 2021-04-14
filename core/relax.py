@@ -82,8 +82,6 @@ class RelaxationLabeling(object):
                 self.strength[i, :] /= sumStrength
 
     def iterate(self):
-        if self.save and self.iteration == 0:
-            self.saveCompatibility()
         print("iteration {}".format(self.iteration))
         self.updateSupport()
         self.updateStrength()
@@ -102,7 +100,7 @@ class RelaxationLabeling(object):
                     print(self.strength[i,:])
 
     def saveCompatibility(self, compatibilityFilename, compatibility):
-        compatibilityFile = open('compatibility.csv', 'w')
+        compatibilityFile = open(compatibilityFilename, 'w')
         compatibilityText = ''
         for i in range(self.numObjects):
             for j in range(self.numLabels):
@@ -115,7 +113,7 @@ class RelaxationLabeling(object):
                 for k in range(self.numObjects):
                     for l in range(self.numLabels):
                         # One compatibility value:
-                        compatibilityText += ',' + str(self.compatibility[i,j,k,l])
+                        compatibilityText += ',' + str(compatibility[i,j,k,l])
         compatibilityFile.write(compatibilityText)
         compatibilityFile.close()
 

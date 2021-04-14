@@ -44,12 +44,14 @@ class MergeLineSegments(RelaxationLabeling):
 
     def doHoughLinesP(self):
         #lines = cv2.HoughLinesP(self.edgeImage,1,np.pi/180,25,10,10)
-        self.lines = cv2.HoughLinesP(self.edgeImage,rho = 1,theta = 1*np.pi/180,threshold = 25,minLineLength = 10,maxLineGap = 10)
+        self.lines = cv2.HoughLinesP(self.edgeImage,rho = 1,theta = 1*np.pi/180,threshold = 55,minLineLength = 20,maxLineGap = 10)
         #self.lines = cv2.HoughLinesP(self.edgeImage,rho = 1,theta = 1*np.pi/180,threshold = 10,minLineLength = 5,maxLineGap = 10)
         for l, line in enumerate(self.lines):
             for x1, y1, x2, y2 in line:
                 print("line #{}: {} {} {} {}".format(l, x1, y1, x2, y2))
-                cv2.line(self.imageColor,(x1,y1),(x2,y2),(0,0,255),2)
+                self.imageColorCopy = self.imageColor.copy()
+                cv2.line(self.imageColorCopy,(x1,y1),(x2,y2),(0,0,255),2)
+                cv2.imwrite("line{}.png".format(l), self.imageColorCopy)
 
         cv2.imshow("image with hough lines", self.imageColor)
         cv2.waitKey()
@@ -94,7 +96,7 @@ class MergeLineSegments(RelaxationLabeling):
         lVector = self.labelVectors[l]
         ijCompatibility = np.dot(iVector, jVector)/(self.objectDistances[i]*self.labelDistances[j])
         klCompatibility = np.dot(kVector, lVector)/(self.objectDistances[k]*self.labelDistances[l])
-        self.compatibility[i, j, k, l] = 0.5*ijCompatibility + 0.5*klCompatibility
+        self.orientationCompatibility[i, j, k, l] = 0.5*ijCompatibility + 0.5*klCompatibility
 
     def calculateOrientationCompatibilityVerbose(self, i, j, k, l):
         iObject = self.objects[i]
@@ -191,6 +193,9 @@ class MergeLineSegments(RelaxationLabeling):
     def main(self):
         self.initLineSegmentObjectsAndLabels()
         super(MergeLineSegments, self).main()
+        self.saveCompatibility("orientation_compatibility.csv",self.orientationCompatibility)
+        self.saveCompatibility("proximity_compatibility.csv",self.proximityCompatibility)
+        self.saveCompatibility("compatibility.csv",self.compatibility)
 
 
 mergeLineSegments = MergeLineSegments()
