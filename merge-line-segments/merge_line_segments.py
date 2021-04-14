@@ -1,6 +1,6 @@
 import os
 import sys
-user = "priyabapat"
+user = "mannyglover"
 path = "/Users/" + user + "/Code/relaxation-labeling/core/"
 sys.path.append(os.path.dirname(path))
 print(sys.path)
@@ -75,21 +75,24 @@ class MergeLineSegments(RelaxationLabeling):
         self.doHoughLinesP()
         self.objects = np.zeros(shape = [len(self.lines), 4])
         self.objectDistances = np.zeros(shape = [len(self.lines)])
+        self.objectVectors = np.zeros(shape = [len(self.lines), 2])
         for l, line in enumerate(self.lines):
             self.objects[l] = line[0]
-            self.objectDistances[l] = np.linalg.norm(self.objects[l, 0:2]-self.objects[l, 2:])
+            self.objectVectors[l] = self.objects[1, 0:2] - self.objects[l, 2:]
+            self.objectDistances[l] = np.linalg.norm(self.objectVectors[l])
         self.labels = self.objects
         self.labelDistances  = self.objectDistances
+        self.labelVectors = self.objectVectors
         self.numObjects = len(self.objects)
         self.numLabels = len(self.labels)
 
     def calculateOrientationCompatibility(self, i, j, k, l):
-        iObject = self.objects[i]
-        jLabel = self.labels[j]
-        kObject = self.objects[k]
-        lLabel = self.labels[l]
-        ijCompatibility = np.dot(iObject, jLabel)/(self.objectDistances[i]*self.labelDistances[j])
-        klCompatibility = np.dot(kObject, lLabel)/(self.objectDistances[k]*self.labelDistances[l])
+        iVector = self.objectVectors[i]
+        jVector = self.labelVectors[j]
+        kVector = self.objectVectors[k]
+        lVector = self.labelVectors[l]
+        ijCompatibility = np.dot(iVector, jVector)/(self.objectDistances[i]*self.labelDistances[j])
+        klCompatibility = np.dot(kVector, lVector)/(self.objectDistances[k]*self.labelDistances[l])
         self.compatibility[i, j, k, l] = 0.5*ijCompatibility + 0.5*klCompatibility
 
     def calculateOrientationCompatibilityVerbose(self, i, j, k, l):
