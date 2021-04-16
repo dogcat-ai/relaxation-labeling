@@ -99,6 +99,24 @@ class RelaxationLabeling(object):
                     print('strengths for object i',i)
                     print(self.strength[i,:])
 
+    def saveCompatibilityForPlotting(self, compatibilityFilename, compatibility):
+        compatibilityFile = open(compatibilityFilename, 'w')
+        compatibilityText = ''
+        for i in range(self.numObjects):
+            for j in range(self.numLabels):
+                # One column in header row:
+                compatibilityText += ',' + str(i) + str(j)  
+        for i in range(self.numObjects):
+            for j in range(self.numLabels):
+                # One row in header column:
+                compatibilityText += '\n' + str(i) + str(j) 
+                for k in range(self.numObjects):
+                    for l in range(self.numLabels):
+                        # One compatibility value:
+                        compatibilityText += ',' + str(compatibility[i,j,k,l])
+        compatibilityFile.write(compatibilityText)
+        compatibilityFile.close()
+        
     def saveCompatibility(self, compatibilityFilename, compatibility):
         compatibilityFile = open(compatibilityFilename, 'w')
         compatibilityText = ''

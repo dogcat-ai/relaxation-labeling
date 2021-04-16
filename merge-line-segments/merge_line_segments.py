@@ -193,6 +193,9 @@ class MergeLineSegments(RelaxationLabeling):
     def main(self):
         self.initLineSegmentObjectsAndLabels()
         super(MergeLineSegments, self).main()
+        self.saveCompatibilityForPlotting("orientation_compatibility_plt.csv",self.orientationCompatibility)
+        self.saveCompatibilityForPlotting("proximity_compatibility_plt.csv",self.proximityCompatibility)
+        self.saveCompatibilityForPlotting("compatibility_plt.csv",self.compatibility)
         self.saveCompatibility("orientation_compatibility.csv",self.orientationCompatibility)
         self.saveCompatibility("proximity_compatibility.csv",self.proximityCompatibility)
         self.saveCompatibility("compatibility.csv",self.compatibility)
