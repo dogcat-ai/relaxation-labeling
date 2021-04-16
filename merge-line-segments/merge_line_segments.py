@@ -51,7 +51,7 @@ class MergeLineSegments(RelaxationLabeling):
                 print("line #{}: {} {} {} {}".format(l, x1, y1, x2, y2))
                 self.imageColorCopy = self.imageColor.copy()
                 cv2.line(self.imageColorCopy,(x1,y1),(x2,y2),(0,0,255),2)
-                cv2.imwrite("line{}.png".format(l), self.imageColorCopy)
+                cv2.imwrite("line{:02d}.png".format(l), self.imageColorCopy)
 
         cv2.imshow("image with hough lines", self.imageColor)
         cv2.waitKey()
@@ -83,6 +83,7 @@ class MergeLineSegments(RelaxationLabeling):
             self.objects[l] = line[0]
             self.objectVectors[l] = self.objects[1, 0:2] - self.objects[l, 2:]
             self.objectDistances[l] = np.linalg.norm(self.objectVectors[l])
+        self.maxDistance = np.max(self.objectDistances)
         self.labels = self.objects
         self.labelDistances  = self.objectDistances
         self.labelVectors = self.objectVectors
@@ -161,22 +162,22 @@ class MergeLineSegments(RelaxationLabeling):
 
         iObject = self.objects[i]
         kObject = self.objects[k]
-        distance12 = np.linalg.norm(iObject[0:2] - kObject[2:])
-        distance11 = np.linalg.norm(iObject[0:2] - kObject[0:2])
-        distance21 = np.linalg.norm(iObject[2:] - kObject[0:2])
-        distance22 = np.linalg.norm(iObject[2:] - kObject[2:])
+        distance12 = np.linalg.norm(iObject[0:2] - kObject[2:])/self.maxDistance
+        distance11 = np.linalg.norm(iObject[0:2] - kObject[0:2])/self.maxDistance
+        distance21 = np.linalg.norm(iObject[2:] - kObject[0:2])/self.maxDistance
+        distance22 = np.linalg.norm(iObject[2:] - kObject[2:])/self.maxDistance
         ikShortest = min(distance12, distance11, distance21, distance22)
         if j == l:
-            self.proximityCompatibility[i, j, k, l] = 3 - ikShortest
+            self.proximityCompatibility[i, j, k, l] = 1 - ikShortest
         else:
             jLabel = self.labels[j]
             lLabel = self.labels[l]
-            distance12 = np.linalg.norm(jLabel[0:2] - lLabel[2:])
-            distance11 = np.linalg.norm(jLabel[0:2] - lLabel[0:2])
-            distance21 = np.linalg.norm(jLabel[2:] - lLabel[0:2])
-            distance22 = np.linalg.norm(jLabel[2:] - lLabel[2:])
+            distance12 = np.linalg.norm(jLabel[0:2] - lLabel[2:])/self.maxDistance
+            distance11 = np.linalg.norm(jLabel[0:2] - lLabel[0:2])/self.maxDistance
+            distance21 = np.linalg.norm(jLabel[2:] - lLabel[0:2])/self.maxDistance
+            distance22 = np.linalg.norm(jLabel[2:] - lLabel[2:])/self.maxDistance
             jlShortest = min(distance12, distance11, distance21, distance22)
-            self.proximityCompatibility[i, j, k, l] = abs(ikShortest - jlShortest)
+            self.proximityCompatibility[i, j, k, l] = 1 - abs(ikShortest - jlShortest)
 
     def calculateCompatibility(self):
         self.orientationCompatibility = np.zeros((self.numObjects, self.numLabels, self.numObjects, self.numLabels))
@@ -188,7 +189,7 @@ class MergeLineSegments(RelaxationLabeling):
                     for l, lLabel in enumerate(self.labels):
                         self.calculateOrientationCompatibility(i, j, k, l)
                         self.calculateProximityCompatibility(i, j, k, l)
-                        self.compatibility[i, j, k, l] = 0.5*self.orientationCompatibility[i, j, k, l] + 0.5*self.proximityCompatibility[i, j, k, l]
+                        self.compatibility[i, j, k, l] = 0.5*self.orientationCompatibility[i, j, k, l] + 0.5*self.orientationCompatibility[i, j, k, l]*self.proximityCompatibility[i, j, k, l]
 
     def main(self):
         self.initLineSegmentObjectsAndLabels()
