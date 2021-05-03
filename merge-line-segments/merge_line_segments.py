@@ -15,6 +15,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import ortho_group
+from scipy.ndimage.morphology import binary_dilation, binary_erosion
 
 # TODO Find vertices with number of lines == 1
 # TODO Find vertex connections
@@ -42,41 +43,23 @@ class MergeLineSegments(RelaxationLabeling):
         h, w = img.shape[:2]
         return cv2.resize(img, (w*factor, h*factor), interpolation=cv2.INTER_AREA)
 
-    def readImage(self):
-        #imagePath = path + "../../relaxation-labeling-supporting-files/triangular-bond-w-1-offshoot.jpeg"
-        #imagePath = os.path.expanduser("~/Code/relaxation-labeling-supporting-files/single_bonds.jpeg")
-        imagePath = os.path.expanduser("../../relaxation-labeling-supporting-files/single_bonds.jpeg")
-        self.image = cv2.imread(imagePath, cv2.IMREAD_GRAYSCALE)
-        self.imageColor = cv2.imread(imagePath, cv2.IMREAD_COLOR)
-        print("After initial imread, image's shape is:")
-        print("\t{}".format(self.image.shape))
-        #(thresh, self.image) = cv2.threshold(self.image, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-        #print("After Otsu thresholding, image's shape is:")
-        #print("\t{}".format(self.image.shape))
-        #cv2.imshow("molecule with single bonds", self.resize(self.image))
-        #plt.title('Molecule with single bonds')
-        #plt.imshow(self.image, cmap='gray')
-        #plt.show()
-        #cv2.waitKey()
+    def readImage(self, imagePath):
+        image = cv2.imread(imagePath, cv2.IMREAD_GRAYSCALE)
+        imageColor = cv2.imread(imagePath, cv2.IMREAD_COLOR)
+        print 'Initial Image shape',image.shape
+        return image, imageColor
 
-    def doEdgeDetection(self):
-        self.edgeImage = cv2.Canny(self.image,50,150,apertureSize = 3)
+    def doEdgeDetection(self, image, MinThreshold=50, MaxThreshold=150, ApertureSize=3):
+        edgeImage = cv2.Canny(image,MinThreshold,MaxThreshold,apertureSize = ApertureSize)
+        return edgeImage
 
-    def doHoughLinesP(self):
-        #lines = cv2.HoughLinesP(self.edgeImage,1,np.pi/180,25,10,10)
-        self.lines = cv2.HoughLinesP(self.edgeImage,rho = 1,theta = 1*np.pi/180,threshold = 35,minLineLength = 20,maxLineGap = 10)
-        #self.lines = cv2.HoughLinesP(self.edgeImage,rho = 1,theta = 1*np.pi/180,threshold = 10,minLineLength = 5,maxLineGap = 10)
-        if False:
-            for l, line in enumerate(self.lines):
-                for x1, y1, x2, y2 in line:
-                    print("line #{}: {} {} {} {}".format(l, x1, y1, x2, y2))
-                    self.imageColorCopy = self.imageColor.copy()
-                    cv2.line(self.imageColorCopy,(x1,y1),(x2,y2),(0,0,255),2)
-                    cv2.imwrite("line{:02d}.png".format(l), self.imageColorCopy)
-
-            cv2.imshow("image with hough lines", self.imageColor)
-            cv2.waitKey()
-        self.lines = np.squeeze(self.lines)
+    def doHoughLinesP(self, image, case=1):
+        all_lines = []
+        for threshold in range(10,14):
+            lines = cv2.HoughLinesP(image,rho = 1,theta = 1*np.pi/180,threshold = threshold,minLineLength = 10,maxLineGap = 5)
+            lines = np.squeeze(lines)
+            all_lines = np.reshape(np.append(all_lines, lines), (-1,lines.shape[1]))
+        return all_lines
 
     def doHoughLines(self):
         lines = cv2.HoughLines(self.edgeImage,1,np.pi/180,50)
@@ -95,9 +78,13 @@ class MergeLineSegments(RelaxationLabeling):
         cv2.waitKey()
 
     def initLineSegmentObjectsAndLabels(self):
-        self.readImage()
+        #imagePath = path + "../../relaxation-labeling-supporting-files/triangular-bond-w-1-offshoot.jpeg"
+        #imagePath = os.path.expanduser("~/Code/relaxation-labeling-supporting-files/single_bonds.jpeg")
+        imagePath = os.path.expanduser("../../relaxation-labeling-supporting-files/single_bonds.jpeg")
+        #imagePath = os.path.expanduser("../../relaxation-labeling-supporting-files/000011a64c74.png")
+        self.image, self.imageColor = self.readImage(imagePath)
         self.doEdgeDetection()
-        self.doHoughLinesP()
+        self.lines = self.doHoughLinesP(self.edgeImage)
         self.objects = np.zeros(shape = [len(self.lines), 4])
         self.objectDistances = np.zeros(shape = [len(self.lines)])
         self.objectVectors = np.zeros(shape = [len(self.lines), 2])
@@ -267,30 +254,44 @@ class MergeLineSegments(RelaxationLabeling):
             outliers.append(distance)
         return np.asarray(outliers)
 
-    def getClusters(self, points, labels):
+    def getPointsFromVertices(self, vertices):
+        points = []
+        for vertex in vertices:
+            points.append(np.asarray(vertex[2]))
+        return np.asarray(points)
+
+    def getClusters(self, vertices, labels):
         clusters = []
         unique_labels = np.unique(labels)
         print 'labels',labels
         for label in unique_labels:
-            indices = np.asarray(np.squeeze(np.asarray(np.where(labels == label))))
-            print 'label',label,'indices',indices
-            print 'Shape of indices',indices.shape
+            #indices = np.asarray(np.squeeze(np.asarray(np.where(labels == label))))
+            indices = np.squeeze(np.asarray(np.where(labels == label)))
 
-
-            cluster_points = np.asarray(points)[indices.astype('int')]
+            cluster_vertices = np.asarray(vertices)[indices.astype('int')]
+            print 'indices',indices,'  size',np.size(indices),'  ndim',np.ndim(indices),'  type',type(indices)
+            if np.ndim(indices) == 0:
+                indices = np.array([int(indices)])
+                print ' mod indices',indices,'  isscalar',np.isscalar(indices),'  ndim',np.ndim(indices)
+                cluster_vertices = np.asarray(vertices)[indices.astype('int')]
+                print 'Shape of cluster_vertices',cluster_vertices.shape
+            print 'Shape of vertices',vertices.shape
+            print 'Shape of cluster_vertices',cluster_vertices.shape
             cluster = []
-            cluster.append(cluster_points)
-            cluster.append(np.mean(cluster_points,axis=0))
-            cluster.append(np.std(cluster_points,axis=0))
+            cluster.append(cluster_vertices)
+            points = self.getPointsFromVertices(cluster_vertices)
+            cluster.append(np.mean(points,axis=0))
+            cluster.append(np.std(points,axis=0))
             clusters.append(cluster)
-        return clusters
+            
+        return np.asarray(clusters)
 
     def getMaxClusterStd(self, clusters):
         stds = np.stack(np.asarray(clusters)[:,2])
         norms = np.linalg.norm(stds, axis=1)
         return max(norms)
 
-    def doClusterVertices(self, vertices, lines, distance_threshold, ClusteringTechnique='AGG', PlotClusters=True):
+    def doClusterVertices(self, vertices, lines, distance_threshold, ClusteringTechnique='AGG', PlotClusters=False):
         import scipy.cluster.hierarchy as sch
         from sklearn.cluster import AgglomerativeClustering
 
@@ -307,20 +308,35 @@ class MergeLineSegments(RelaxationLabeling):
 
             number_clusters = 5
             max_number_clusters = 50
+            remaining_points = points
+            remaining_vertices = vertices
+            final_clusters = []
             while True:
                 # Create Clusters
                 hc = AgglomerativeClustering(n_clusters=number_clusters, affinity='euclidean',compute_full_tree=True)
-                y_hc = hc.fit_predict(points)
+                y_hc = hc.fit_predict(remaining_points)
 
-                clusters = self.getClusters(points, y_hc)
+                clusters = self.getClusters(remaining_vertices, y_hc)
                 max_cluster_std = self.getMaxClusterStd(clusters)
 
+                if False:
+                    good_clusters, remaining_vertices = self.getGoodClusters(clusters, vertices)
+                    remaining_points = []
+                    for vertex in remaining_vertices:
+                        remaining_points.append(np.asarray(vertex[2]))
+
+                    if np.size(good_clusters) != 0:
+                        final_clusters.append(good_clusters)
+                        number_clusters -= good_clusters.shape[0]
 
                 if PlotClusters:
-                    plt.title('Clusters ('+str(number_clusters)+') with Stds -- Max = '+str(round(max_cluster_std,0)))
+                    plt.title('Clusters ('+str(number_clusters)+') with Stds -- Max = '+str(round(max_cluster_std,0))+'  Threshold='+str(round(distance_threshold)))
                     plt.imshow(self.image, cmap='gray', alpha=.25)
                     for cluster in clusters:
-                        cluster_points = cluster[0]
+                        print 'shape of cluster',cluster.shape
+                        print 'first element of cluster',cluster[0]
+                        print 'shape of first element of cluster',cluster[0].shape
+                        cluster_points = self.getPointsFromVertices(cluster[0])
                         cluster_mean = cluster[1]
                         cluster_std = cluster[2]
                         print 'cluster mean',cluster_mean,' shape',cluster_mean.shape
@@ -330,7 +346,7 @@ class MergeLineSegments(RelaxationLabeling):
                     plt.show()
 
 
-                if max_cluster_std > .25*distance_threshold or number_clusters >= max_number_clusters:
+                if max_cluster_std > distance_threshold or number_clusters >= max_number_clusters:
                     number_clusters += 1
                 else:
                     break
@@ -339,7 +355,7 @@ class MergeLineSegments(RelaxationLabeling):
                 plt.title('Vertices = '+str(number_clusters)+' Max Std='+str(round(max_cluster_std,0)))
                 plt.imshow(self.image, cmap='gray', alpha=.25)
                 for cluster in clusters:
-                    cluster_points = cluster[0]
+                    cluster_points = cluster[0][:,2]
                     cluster_mean = cluster[1]
                     cluster_std = cluster[2]
                     print 'cluster mean',cluster_mean,' shape',cluster_mean.shape
@@ -348,48 +364,280 @@ class MergeLineSegments(RelaxationLabeling):
 
         return clusters, y_hc
 
+    def lengthOfLine(self, line):
+        return np.linalg.norm(line[:2] - line[2:])
+
+    def getCollapsedDistanceLineToPoints(self, line, Pi, Pj):
+        ds = []
+        line_length = self.lengthOfLine(line)
+
+        # Note. The below sequence of length calculations cannot be modified 
+        # independently of the calculation below for length2line2
+        ds.append(np.linalg.norm(Pi-line[:2]))
+        ds.append(np.linalg.norm(Pi-line[2:]))
+        ds.append(np.linalg.norm(Pj-line[:2]))
+        ds.append(np.linalg.norm(Pj-line[2:]))
+        ds = np.asarray(ds)
+        index1 = np.argmin(ds)
+        length2line1 = ds[index1]
+        length2line2 = ds[3-index1]
+
+        d = line_length + length2line1 + length2line2
+        excess = length2line1 + length2line2
+        return d, excess
+
+    def getLineVectorDotProduct(self, line, vec):
+        linevec = np.asarray(line[:2]-line[2:])
+        print 'linevec',linevec,'  shape',linevec.shape
+        print 'vec',vec,'  shape',vec.shape
+        dp = np.dot(vec,linevec)/(np.linalg.norm(vec)*np.linalg.norm(linevec))
+        return abs(dp)
+
+
+    def doConnectClusters(self, clusters, lines, typical_line_length, DistanceThreshold=.45, DotpThreshold=.025, PlotDebug=False):
+
+        if False:
+            for i in range(0,clusters.shape[0]):
+                vertices = clusters[i][0]
+                mean = clusters[i][1]
+                std = clusters[i][2]
+                plt.title('Clusters #'+str(i)+' vertices'+'  std='+str(std))
+                plt.imshow(self.image, cmap='gray', alpha=.25)
+                plt.plot(mean[0], mean[1], marker='+', markersize=15, color='blue')
+                for vertex in vertices:
+                    point = vertex[2]
+                    plt.plot(point[0], point[1], marker='x', markersize=10, color='red')
+                plt.show()
+
+
+        if True:
+            connections = []
+            print 'doConnectClusters...........'
+            if PlotDebug:
+                plt.title('Debug connections')
+                plt.imshow(self.image, cmap='gray', alpha=.25)
+            for i in range(0,clusters.shape[0]):
+                Pi = clusters[i][1]
+                vertices_i = clusters[i][0]
+                for j in range(i+1,clusters.shape[0]):
+                    Pj = clusters[j][1]
+                    if PlotDebug:
+                        plt.plot(Pi[0], Pi[1], marker='x', markersize=10, color='red')
+                        plt.plot(Pj[0], Pj[1], marker='x', markersize=10, color='green')
+                    vertices_j = clusters[j][0]
+                    Vecij = Pi - Pj
+                    distij = np.linalg.norm(Vecij)
+                    
+                    Pij_connected = False
+                    print 'DistanceThreshold',DistanceThreshold,'DotpThreshold',DotpThreshold,'excess threshold',.5*typical_line_length
+                    for vertex in vertices_i:
+                        Pij_connected = False
+                        for index in vertex[:2]:
+                            Pij_connected = False
+                            line = self.lines[index]
+                            dp = self.getLineVectorDotProduct(line, Vecij)
+                            d, excess = self.getCollapsedDistanceLineToPoints(line, Pi, Pj)
+                            fom = abs(d-distij)/distij
+                            print 'i',i,'j',j,'fom',fom,'abs(dp-1)',abs(dp-1),'excess',excess
+                            if fom < DistanceThreshold and abs(dp-1) < DotpThreshold and excess < .5*typical_line_length:
+                                if PlotDebug:
+                                    plt.title('i='+str(i)+' j='+str(j)+'  d='+str(round(d,0)) + '  dij='+str(round(distij))+'  dp='+str(round(dp,3)))
+                                    plt.imshow(self.image, cmap='gray', alpha=.25)
+                                    plt.plot([line[0],line[2]], [line[1],line[3]], linewidth=1, color='blue')
+                                    plt.text(.5*(line[0]+line[2]), .5*(line[1]+line[3]), str(round(fom,2)))
+                                    plt.plot([Pi[0],Pj[0]], [Pi[1],Pj[1]], linewidth=1, color='red')
+                                    plt.show()
+                                Pij_connected = True
+                                connections.append([i,j])
+                                break
+                            if Pij_connected:
+                                break
+                        if Pij_connected:
+                            break
+
+                    if Pij_connected == False:
+                        for vertex in vertices_j:
+                            Pij_connected = False
+                            for index in vertex[:2]:
+                                Pij_connected = False
+                                line = self.lines[index]
+                                dp = self.getLineVectorDotProduct(line, Vecij)
+                                d, excess = self.getCollapsedDistanceLineToPoints(line, Pi, Pj)
+                                fom = abs(d-distij)/distij
+                                if fom < DistanceThreshold and abs(dp-1)<DotpThreshold and excess < .5*typical_line_length:
+                                    if PlotDebug:
+                                        plt.title('**i='+str(i)+' j='+str(j)+'  d='+str(round(d,0)) + '  dij='+str(round(distij))+'  dp='+str(round(dp,3)))
+                                        plt.imshow(self.image, cmap='gray', alpha=.25)
+                                        plt.plot([line[0],line[2]], [line[1],line[3]], linewidth=1, color='blue')
+                                        plt.text(.5*(line[0]+line[2]), .5*(line[1]+line[3]), str(round(fom,2)))
+                                        plt.plot([Pi[0],Pj[0]], [Pi[1],Pj[1]], linewidth=1, color='red')
+                                        plt.show()
+                                    Pij_connected = True
+                                    connections.append([i,j])
+                                    break
+                                if Pij_connected:
+                                    break
+                            if Pij_connected:
+                                break
+
+        return np.asarray(connections)
+
+    def linesAreEqual(self, line1, line2, epsilon=.01):
+        dx1 = abs(line1[0] - line2[0])
+        dy1 = abs(line1[1] - line2[1])
+        dx2 = abs(line1[2] - line2[2])
+        dy2 = abs(line1[3] - line2[3])
+        d = dx1 + dy1 + dx2 + dy2
+        return d < epsilon
+
+    def linesAreClose(self, line1, line2, epsilon=1.01):
+        dx1 = abs(line1[0] - line2[0])
+        dy1 = abs(line1[1] - line2[1])
+        dx2 = abs(line1[2] - line2[2])
+        dy2 = abs(line1[3] - line2[3])
+        return dx1 < epsilon and dy1 < epsilon and dx2 < epsilon and dy2 < epsilon
+
+    def mergeHoughLines(self, lines):
+        print 'mergeHoughLines'
+        print 'Initial shape of lines',lines.shape
+        #lines_sorted = lines[np.argsort(lines[:,0])]
+        lines_sorted = lines[np.lexsort((lines[:,3], lines[:,2], lines[:,1], lines[:,0]))]
+
+        # Remove identical lines
+        clean_lines = []
+        last_line = lines_sorted[0]
+        clean_lines = np.append(clean_lines, last_line)
+        for i in range(1,lines_sorted.shape[0]):
+            next_line = lines_sorted[i]
+            if self.linesAreEqual(last_line, next_line):
+                continue
+            else:
+                last_line = next_line
+                clean_lines = np.append(clean_lines, last_line)
+        clean_lines = np.reshape(clean_lines, (-1, lines_sorted.shape[1]))
+        print 'shape of clean lines',clean_lines.shape
+
+        # Merge close lines
+        merged_lines = []
+        last_line = clean_lines[0]
+        i = 1
+        while i < clean_lines.shape[0]:
+            next_line = clean_lines[i]
+            if self.linesAreClose(last_line, next_line, epsilon=1.01):
+                merged_line = .5*(last_line + next_line)
+                merged_lines = np.append(merged_lines, merged_line)
+
+                i += 1
+                if i < clean_lines.shape[0]:
+                    last_line = clean_lines[i]
+                    last_line_merged = False
+                else:
+                    last_line_merged = True
+
+                i += 1
+
+            else:
+                merged_lines = np.append(merged_lines, last_line)
+                last_line = next_line
+                last_line_merged = False
+                i += 1
+
+        if not last_line_merged:
+                merged_lines = np.append(merged_lines, last_line)
+        merged_lines = np.reshape(merged_lines, (-1,clean_lines.shape[1]))
+        print 'shape of merged lines',merged_lines.shape
+
+        return merged_lines
+
+
     def end2end(self):
-        self.readImage()
-        plt.title('Molecule with single bonds')
-        plt.imshow(self.image, cmap='gray')
-        plt.show()
+        import pathlib
 
-        self.doEdgeDetection()
-        plt.title('Canny Edges of molecule')
-        plt.imshow(self.edgeImage, cmap='gray')
-        plt.show()
+        NumberDilationErodeIterations = 1
 
-        self.doHoughLinesP()
-        print 'Shape of HoughLinesP result',self.lines.shape
-        plt.title('Hough Lines -- Count = '+str(self.lines.shape[0]))
-        plt.imshow(self.edgeImage, cmap='gray')
-        for line in self.lines:
-            plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
-        plt.show()
+        #imagePath = os.path.expanduser("../../relaxation-labeling-supporting-files/single_bonds.jpeg")
+        imageDir = "../../relaxation-labeling-supporting-files"
+        imageNames = [f for f in os.listdir(imageDir) if pathlib.Path(f).suffix == '.png']
+        for imageName in imageNames:
+            imagePath = os.path.join(imageDir, imageName)
+            self.image, self.imageColor = self.readImage(imagePath)
+            plt.title(imageName + ' of shape='+np.str(self.image.shape))
+            plt.imshow(self.image, cmap='gray')
+            plt.show()
 
-        typical_line_length = self.getTypicalLineLength(self.lines)
-        print 'Typical Line Length = ', typical_line_length
+            # If image is black lines on white background, 
+            # then image needs to be reversed before dilation.
+            imageReversed = np.asarray(255 - self.image).astype('uint8')
+            imageDilated = binary_dilation(imageReversed, iterations=NumberDilationErodeIterations)
+            #imageDilated = np.asarray(255 - imageDilated).astype('uint8')
+            plt.title('Dilated Image')
+            plt.imshow(imageDilated, cmap='gray')
+            plt.show()
 
-        all_vertices = self.doComputeVertices(self.lines)
-        print 'Shape of all vertices',all_vertices.shape
+            imageEroded = binary_erosion(imageDilated, iterations=NumberDilationErodeIterations)
+            self.houghImage = imageEroded
+            self.houghImage = np.asarray(self.houghImage).astype('uint8')
+            self.houghImage[self.houghImage != 0] = 255
+            plt.title('Eroded Image (image to process)')
+            plt.imshow(self.houghImage, cmap='gray')
+            plt.show()
 
-        vertices1 = self.doCleanVerticesByDistance(all_vertices, self.lines, typical_line_length)
-        print 'Shape of vertices cleaned by distance of ',typical_line_length,' = ',vertices1.shape
+            self.lines = self.doHoughLinesP(self.houghImage)
 
-        clean_distance = .25*typical_line_length
-        vertices2 = self.doCleanVerticesByDistance(vertices1, self.lines, clean_distance)
-        print 'Shape of vertices cleaned by distance of ',clean_distance,' = ',vertices2.shape
-        plt.title('Vertices Cleaned -- Dist= '+ str(round(clean_distance,0))+'  Count='+str(vertices2.shape[0]))
-        plt.imshow(self.image, cmap='gray')
-        for vertex in vertices2:
-            vertex_point = np.asarray(vertex[2])
-            plt.plot(vertex_point[0], vertex_point[1], marker='x', color='red')
-        plt.show()
+            plt.title('Hough Lines -- Count = '+str(self.lines.shape[0]))
+            plt.imshow(self.houghImage, cmap='gray')
+            for line in self.lines:
+                plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
+            plt.show()
 
-        hc, y_hc = self.doClusterVertices(vertices2, self.lines, .2*typical_line_length)
+            self.lines = self.mergeHoughLines(self.lines)
 
-        print 'hc =',hc
-        print 'y_hc = ',y_hc
+            plt.title('Merged Hough Lines -- Count = '+str(self.lines.shape[0]))
+            plt.imshow(self.houghImage, cmap='gray')
+            for line in self.lines:
+                plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
+            plt.show()
+
+
+            all_vertices = self.doComputeVertices(self.lines)
+
+            typical_line_length = self.getTypicalLineLength(self.lines)
+            #clean_distance = .25*typical_line_length
+            clean_distance = .35*typical_line_length
+            self.vertices = self.doCleanVerticesByDistance(all_vertices, self.lines, clean_distance)
+            plt.title('Intersection of hough lines (Vertices) \n restricted by intersection to closest line endpoint <'+ str(round(clean_distance,2))+' pixels')
+            plt.imshow(self.houghImage, cmap='gray')
+            for vertex in self.vertices:
+                vertex_point = np.asarray(vertex[2])
+                plt.plot(vertex_point[0], vertex_point[1], marker='x', color='red')
+            plt.show()
+
+            #clusters, labels = self.doClusterVertices(self.vertices, self.lines, .114*typical_line_length)
+            clusters, labels = self.doClusterVertices(self.vertices, self.lines, .15*typical_line_length)
+
+            plt.title('Means of clustered vertices -- Count='+str(clusters.shape[0]))
+            plt.imshow(self.houghImage, cmap='gray')
+            for i,cluster in enumerate(clusters):
+                location = cluster[1]
+                plt.plot(location[0], location[1], marker='+', markersize=10, color='red')
+                plt.text(location[0], location[1], '#'+str(i))
+            plt.show()
+
+            connections = self.doConnectClusters(clusters, self.lines, typical_line_length)
+            print 'connections',connections
+
+            plt.title('Clusters Connected')
+            plt.imshow(self.image, cmap='gray', alpha=.25)
+            for i,cluster in enumerate(clusters):
+                location = cluster[1]
+                plt.plot(location[0], location[1], marker='+', markersize=10, color='red')
+                plt.text(location[0], location[1], '#'+str(i))
+            for connection in connections:
+                cluster1_mean = clusters[connection[0]][1]
+                cluster2_mean = clusters[connection[1]][1]
+                plt.plot([cluster1_mean[0],cluster2_mean[0]], [cluster1_mean[1],cluster2_mean[1]], linewidth=1, color='green')
+                #plt.text(.5*(cluster1_mean[0]+cluster2_mean[0]), .5*(cluster1_mean[1]+cluster2_mean[1]), str(connection[0])+' to '+str(connection[1]))
+            plt.show()
 
 
 
