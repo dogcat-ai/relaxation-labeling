@@ -346,7 +346,7 @@ class MergeLineSegments(RelaxationLabeling):
                     plt.show()
 
 
-                if max_cluster_std > distance_threshold or number_clusters >= max_number_clusters:
+                if max_cluster_std > distance_threshold and number_clusters < max_number_clusters and len(remaining_points) > number_clusters:
                     number_clusters += 1
                 else:
                     break
@@ -490,15 +490,45 @@ class MergeLineSegments(RelaxationLabeling):
         d = dx1 + dy1 + dx2 + dy2
         return d < epsilon
 
-    def linesAreClose(self, line1, line2, epsilon=1.01):
+    def lineEndpointsAreClose(self, line1, line2, epsilon=1.01):
         dx1 = abs(line1[0] - line2[0])
         dy1 = abs(line1[1] - line2[1])
         dx2 = abs(line1[2] - line2[2])
         dy2 = abs(line1[3] - line2[3])
         return dx1 < epsilon and dy1 < epsilon and dx2 < epsilon and dy2 < epsilon
 
-    def mergeHoughLines(self, lines):
-        print 'mergeHoughLines'
+    def mergeCloseLines(self, lines, threshold_d_between_line_segments=2, threshold_d_overlap=10):
+        line_has_been_merged = np.zeros(lines.shape[0], dtype=bool)
+        merged_lines = []
+
+        for i in range(0, lines.shape[0]):
+            if line_has_been_merged[i]: continue
+            for j in range(i+1, lines.shape[0]):
+                if line_has_been_merged[j]: continue
+                d_between_line_segments, d_between_closest_endpoints, d_between_furthest_endpoints, d1, d2 = \
+                        self.distanceBetweenLineSegments(lines[i], lines[j])
+                if d_between_line_segments < threshold_d_between_line_segments and \
+                        d_between_furthest_endpoints - (d1+d2) < threshold_d_overlap:
+                        merged_line = self.mergeTwoLineSegments(lines[i], lines[j]).flatten()
+                        print 'Merging lines i',i,'j',j
+                        line_has_been_merged[i] = True
+                        line_has_been_merged[j] = True
+                        break
+            if line_has_been_merged[i]:
+                merged_lines.append(merged_line)
+            else:
+                merged_lines.append(lines[i])
+
+        merged_lines = np.reshape(np.asarray(merged_lines).flatten(), (-1,4))
+        return merged_lines
+
+
+
+
+
+
+    def mergePracticallyIdenticalLines(self, lines):
+        print 'mergePracticallyIdenticalLines'
         print 'Initial shape of lines',lines.shape
         #lines_sorted = lines[np.argsort(lines[:,0])]
         lines_sorted = lines[np.lexsort((lines[:,3], lines[:,2], lines[:,1], lines[:,0]))]
@@ -523,7 +553,7 @@ class MergeLineSegments(RelaxationLabeling):
         i = 1
         while i < clean_lines.shape[0]:
             next_line = clean_lines[i]
-            if self.linesAreClose(last_line, next_line, epsilon=1.01):
+            if self.lineEndpointsAreClose(last_line, next_line, epsilon=1.01):
                 merged_line = .5*(last_line + next_line)
                 merged_lines = np.append(merged_lines, merged_line)
 
@@ -549,9 +579,87 @@ class MergeLineSegments(RelaxationLabeling):
 
         return merged_lines
 
+    def mergeTwoLineSegments(self, line1, line2):
+        p11 = line1[:2]
+        p12 = line1[2:]
+        p21 = line2[:2]
+        p22 = line2[2:]
+
+        ps = []
+        ps.append([p11, p21])
+        ps.append([p11, p22])
+        ps.append([p12, p21])
+        ps.append([p12, p22])
+        ps = np.asarray(ps)
+
+        ds = []
+        ds.append(np.linalg.norm(p11-p21))
+        ds.append(np.linalg.norm(p11-p22))
+        ds.append(np.linalg.norm(p12-p21))
+        ds.append(np.linalg.norm(p12-p22))
+        ds = np.asarray(ds)
+
+        index = np.argmax(ds)
+
+        # TODO Implement a more accurate merge, which would be:
+        # Taking the below endpoints, and taking the midpoint of 
+        # the projection of each point to the 'partner' line
+        line_merged = np.asarray(ps[index])
+
+        return line_merged
+
+
+    # For each segment endpoint over both lines, find the distance to the other line.
+    # Define the distance between the two line segments as the maximum of thee 4 distances.
+    def distanceBetweenLineSegments(self, line1, line2, debug=True):
+
+        # Distance between 2 line segments
+        p11 = line1[:2]
+        p12 = line1[2:]
+        p21 = line2[:2]
+        p22 = line2[2:]
+        d1 = np.linalg.norm(p12-p11)
+        d2 = np.linalg.norm(p22-p21)
+        d_p11tol2 = abs((p22[0]-p21[0])*(p21[1]-p11[1]) - (p22[1]-p21[1])*(p21[0]-p11[0]))/d2
+        d_p12tol2 = abs((p22[0]-p21[0])*(p21[1]-p12[1]) - (p22[1]-p21[1])*(p21[0]-p12[0]))/d2
+        d_p21tol1 = abs((p12[0]-p11[0])*(p11[1]-p21[1]) - (p12[1]-p11[1])*(p11[0]-p21[0]))/d1
+        d_p22tol1 = abs((p12[0]-p11[0])*(p11[1]-p22[1]) - (p12[1]-p11[1])*(p11[0]-p22[0]))/d1
+        d_between_line_segments = max(d_p11tol2, d_p12tol2, d_p21tol1, d_p22tol1)
+    
+
+        # Also, compute an ancillary measure, the distance between the closest segment endpoints
+        d_p11top21 = np.linalg.norm(p11-p21)
+        d_p11top22 = np.linalg.norm(p11-p22)
+        d_p12top21 = np.linalg.norm(p12-p21)
+        d_p12top22 = np.linalg.norm(p12-p22)
+        d_between_closest_endpoints = min(d_p11top21, d_p11top22, d_p12top21, d_p12top22)
+        d_between_furthest_endpoints = max(d_p11top21, d_p11top22, d_p12top21, d_p12top22)
+
+        if debug:
+            print 'distanceBetweenLineSegments'
+            print 'l1',line1,'length',d1,'l2',line2,'length',d2
+            print 'd_p11tol2',d_p11tol2,'d_p12tol2',d_p12tol2,'d_p21tol1',d_p21tol1,'d_p22tol1',d_p22tol1
+            print 'distance',d_between_line_segments,'closest',d_between_closest_endpoints,'furthest',d_between_furthest_endpoints
+
+        return d_between_line_segments, d_between_closest_endpoints, d_between_furthest_endpoints, d1, d2
+
 
     def end2end(self):
         import pathlib
+
+        if False:
+            lines = []
+            line1 = np.asarray([0,0,20,0])
+            line2 = np.asarray([35,0,40,0])
+            lines.append(line1)
+            lines.append(line2)
+            lines = np.asarray(lines)
+            lines = np.reshape(lines, (-1,4))
+            #self.distanceBetweenLineSegments(line1, line2)
+            #merged_line = self.mergeTwoLineSegments(line1, line2)
+            lines = self.mergeCloseLines(lines)
+            print 'merged lines',lines
+            exit()
 
         NumberDilationErodeIterations = 1
 
@@ -590,14 +698,32 @@ class MergeLineSegments(RelaxationLabeling):
                 plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
             plt.show()
 
-            self.lines = self.mergeHoughLines(self.lines)
+            self.lines = self.mergePracticallyIdenticalLines(self.lines)
 
-            plt.title('Merged Hough Lines -- Count = '+str(self.lines.shape[0]))
+            plt.title('Merged (Almost Identical) Lines -- Count = '+str(self.lines.shape[0]))
             plt.imshow(self.houghImage, cmap='gray')
             for line in self.lines:
                 plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
             plt.show()
 
+            
+            cycle = 0
+            while True:
+                cycle += 1
+
+                lines = self.mergeCloseLines(self.lines)
+
+                if lines.shape[0] == self.lines.shape[0]:
+                    break
+                else:
+                    self.lines = lines
+
+
+                plt.title('Merged (Close #'+str(cycle)+') Lines -- Count = '+str(self.lines.shape[0]))
+                plt.imshow(self.houghImage, cmap='gray')
+                for line in self.lines:
+                    plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
+                plt.show()
 
             all_vertices = self.doComputeVertices(self.lines)
 
@@ -638,6 +764,8 @@ class MergeLineSegments(RelaxationLabeling):
                 plt.plot([cluster1_mean[0],cluster2_mean[0]], [cluster1_mean[1],cluster2_mean[1]], linewidth=1, color='green')
                 #plt.text(.5*(cluster1_mean[0]+cluster2_mean[0]), .5*(cluster1_mean[1]+cluster2_mean[1]), str(connection[0])+' to '+str(connection[1]))
             plt.show()
+
+            
 
 
 
