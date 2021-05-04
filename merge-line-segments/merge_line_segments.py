@@ -263,20 +263,13 @@ class MergeLineSegments(RelaxationLabeling):
     def getClusters(self, vertices, labels):
         clusters = []
         unique_labels = np.unique(labels)
-        print 'labels',labels
         for label in unique_labels:
-            #indices = np.asarray(np.squeeze(np.asarray(np.where(labels == label))))
             indices = np.squeeze(np.asarray(np.where(labels == label)))
 
             cluster_vertices = np.asarray(vertices)[indices.astype('int')]
-            print 'indices',indices,'  size',np.size(indices),'  ndim',np.ndim(indices),'  type',type(indices)
             if np.ndim(indices) == 0:
                 indices = np.array([int(indices)])
-                print ' mod indices',indices,'  isscalar',np.isscalar(indices),'  ndim',np.ndim(indices)
                 cluster_vertices = np.asarray(vertices)[indices.astype('int')]
-                print 'Shape of cluster_vertices',cluster_vertices.shape
-            print 'Shape of vertices',vertices.shape
-            print 'Shape of cluster_vertices',cluster_vertices.shape
             cluster = []
             cluster.append(cluster_vertices)
             points = self.getPointsFromVertices(cluster_vertices)
@@ -291,7 +284,7 @@ class MergeLineSegments(RelaxationLabeling):
         norms = np.linalg.norm(stds, axis=1)
         return max(norms)
 
-    def doClusterVertices(self, vertices, lines, distance_threshold, ClusteringTechnique='AGG', PlotClusters=False):
+    def doClusterVertices(self, vertices, lines, distance_threshold, ClusteringTechnique='AGG', PlotClusters=False, DoNotShowDendrogramPlot=True):
         import scipy.cluster.hierarchy as sch
         from sklearn.cluster import AgglomerativeClustering
 
@@ -302,9 +295,10 @@ class MergeLineSegments(RelaxationLabeling):
         if ClusteringTechnique == 'AGG':
 
             # Create dendrogram
-            dendrogram = sch.dendrogram(sch.linkage(points, method='ward'))
-            plt.title('AGG Result')
-            plt.show()
+            dendrogram = sch.dendrogram(sch.linkage(points, method='ward'), no_plot=DoNotShowDendrogramPlot)
+            if not DoNotShowDendrogramPlot:
+                plt.title('AGG Dendrogram')
+                plt.show()
 
             number_clusters = 5
             max_number_clusters = 50
@@ -388,8 +382,6 @@ class MergeLineSegments(RelaxationLabeling):
 
     def getLineVectorDotProduct(self, line, vec):
         linevec = np.asarray(line[:2]-line[2:])
-        print 'linevec',linevec,'  shape',linevec.shape
-        print 'vec',vec,'  shape',vec.shape
         dp = np.dot(vec,linevec)/(np.linalg.norm(vec)*np.linalg.norm(linevec))
         return abs(dp)
 
@@ -398,7 +390,6 @@ class MergeLineSegments(RelaxationLabeling):
 
         if True:
             connections = []
-            print 'doConnectClusters...........'
             if PlotDebug:
                 plt.title('Debug connections')
                 plt.imshow(self.image, cmap='gray', alpha=.25)
@@ -415,7 +406,6 @@ class MergeLineSegments(RelaxationLabeling):
                     distij = np.linalg.norm(Vecij)
                     
                     Pij_connected = False
-                    print 'DistanceThreshold',DistanceThreshold,'DotpThreshold',DotpThreshold,'excess threshold',.5*typical_line_length
                     for vertex in vertices_i:
                         Pij_connected = False
                         for index in vertex[:2]:
@@ -424,7 +414,6 @@ class MergeLineSegments(RelaxationLabeling):
                             dp = self.getLineVectorDotProduct(line, Vecij)
                             d, excess = self.getCollapsedDistanceLineToPoints(line, Pi, Pj)
                             fom = abs(d-distij)/distij
-                            print 'i',i,'j',j,'fom',fom,'abs(dp-1)',abs(dp-1),'excess',excess
                             if fom < DistanceThreshold and abs(dp-1) < DotpThreshold and excess < .5*typical_line_length:
                                 if PlotDebug:
                                     plt.title('i='+str(i)+' j='+str(j)+'  d='+str(round(d,0)) + '  dij='+str(round(distij))+'  dp='+str(round(dp,3)))
@@ -496,7 +485,6 @@ class MergeLineSegments(RelaxationLabeling):
                 if d_between_line_segments < threshold_d_between_line_segments and \
                         d_between_furthest_endpoints - (d1+d2) < threshold_d_overlap:
                         merged_line = self.mergeTwoLineSegments(lines[i], lines[j]).flatten()
-                        print 'Merging lines i',i,'j',j
                         line_has_been_merged[i] = True
                         line_has_been_merged[j] = True
                         break
@@ -514,9 +502,6 @@ class MergeLineSegments(RelaxationLabeling):
 
 
     def mergePracticallyIdenticalLines(self, lines):
-        print 'mergePracticallyIdenticalLines'
-        print 'Initial shape of lines',lines.shape
-        #lines_sorted = lines[np.argsort(lines[:,0])]
         lines_sorted = lines[np.lexsort((lines[:,3], lines[:,2], lines[:,1], lines[:,0]))]
 
         # Remove identical lines
@@ -597,7 +582,7 @@ class MergeLineSegments(RelaxationLabeling):
 
     # For each segment endpoint over both lines, find the distance to the other line.
     # Define the distance between the two line segments as the maximum of thee 4 distances.
-    def distanceBetweenLineSegments(self, line1, line2, debug=True):
+    def distanceBetweenLineSegments(self, line1, line2, debug=False):
 
         # Distance between 2 line segments
         p11 = line1[:2]
@@ -686,53 +671,70 @@ class MergeLineSegments(RelaxationLabeling):
 
         NumberDilationErodeIterations = 1
 
-        #imagePath = os.path.expanduser("../../relaxation-labeling-supporting-files/single_bonds.jpeg")
         imageDir = "../../relaxation-labeling-supporting-files"
         imageNames = [f for f in os.listdir(imageDir) if pathlib.Path(f).suffix == '.png']
-        for imageName in imageNames:
+        PlotLevel = 1
+        ids_to_process = range(0,len(imageNames))
+        for imageID,imageName in enumerate(imageNames):
+            if not np.isin(imageID, ids_to_process):
+                continue
+
+            # Open Image
             imagePath = os.path.join(imageDir, imageName)
             self.image, self.imageColor = self.readImage(imagePath)
-            plt.title(imageName + ' of shape='+np.str(self.image.shape))
-            plt.imshow(self.image, cmap='gray')
-            plt.show()
 
-            # If image is black lines on white background, 
-            # then image needs to be reversed before dilation.
+            if PlotLevel > 0:
+                plt.title(imageName + ' of shape='+np.str(self.image.shape))
+                plt.imshow(self.image, cmap='gray')
+                plt.show()
+
+            # Fill in single pixel holes --> perform binary dilation on the image
             imageReversed = np.asarray(255 - self.image).astype('uint8')
             imageDilated = binary_dilation(imageReversed, iterations=NumberDilationErodeIterations)
-            #imageDilated = np.asarray(255 - imageDilated).astype('uint8')
-            plt.title('Dilated Image')
-            plt.imshow(imageDilated, cmap='gray')
-            plt.show()
 
+            if PlotLevel > 2:
+                plt.title('Dilated Image')
+                plt.imshow(imageDilated, cmap='gray')
+                plt.show()
+
+            # Go back to 'thin' image, but which has single pixel holes filled in --> perform binary erosion on the image
             imageEroded = binary_erosion(imageDilated, iterations=NumberDilationErodeIterations)
             self.houghImage = imageEroded
             self.houghImage = np.asarray(self.houghImage).astype('uint8')
             self.houghImage[self.houghImage != 0] = 255
-            plt.title('Eroded Image (image to process)')
-            plt.imshow(self.houghImage, cmap='gray')
-            plt.show()
 
+            if PlotLevel > 1:
+                plt.title('Eroded Image (image to process)')
+                plt.imshow(self.houghImage, cmap='gray')
+                plt.show()
+
+            # Create hough line segments
             self.lines = self.doHoughLinesP(self.houghImage)
 
-            plt.title('Hough Lines -- Count = '+str(self.lines.shape[0]))
-            plt.imshow(self.houghImage, cmap='gray')
-            for line in self.lines:
-                plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
-            plt.show()
+            if PlotLevel > 1:
+                plt.title('Hough Lines -- Count = '+str(self.lines.shape[0]))
+                plt.imshow(self.houghImage, cmap='gray')
+                for line in self.lines:
+                    plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
+                plt.show()
 
+            # Merge identical and practically identical lines
             self.lines = self.mergePracticallyIdenticalLines(self.lines)
 
-            plt.title('Merged (Almost Identical) Lines -- Count = '+str(self.lines.shape[0]))
-            plt.imshow(self.houghImage, cmap='gray')
-            for line in self.lines:
-                plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
-            plt.show()
+            if PlotLevel > 2:
+                plt.title('Merged (Almost Identical) Lines -- Count = '+str(self.lines.shape[0]))
+                plt.imshow(self.houghImage, cmap='gray')
+                for line in self.lines:
+                    plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
+                plt.show()
 
             
-            cycle = 0
+            # Merge all close lines
+            # Currently the algorithm can only merge two lines at a time as it is cycling through all the 
+            # lines, so that is why there is a loop below that continues until no lines are merged.
+            merge_count = 0
             while True:
-                cycle += 1
+                merge_count += 1
 
                 lines = self.mergeCloseLines(self.lines)
 
@@ -741,91 +743,96 @@ class MergeLineSegments(RelaxationLabeling):
                 else:
                     self.lines = lines
 
-
-                plt.title('Merged (Close #'+str(cycle)+') Lines -- Count = '+str(self.lines.shape[0]))
-                plt.imshow(self.houghImage, cmap='gray')
-                for line in self.lines:
-                    plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
-                plt.show()
+                if PlotLevel > 2:
+                    plt.title('Merged (Close #'+str(merge_count)+') Lines -- Count = '+str(self.lines.shape[0]))
+                    plt.imshow(self.houghImage, cmap='gray')
+                    for line in self.lines:
+                        plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
+                    plt.show()
 
             # Remove short lines
             typical_line_length = self.getTypicalLineLength(self.lines)
             ShortLineLengthFraction = .6
             ShortLineLengthThreshold = ShortLineLengthFraction*typical_line_length
             self.lines = self.removeShortLines(self.lines, ShortLineLengthThreshold=ShortLineLengthThreshold)
-            plt.title('Removed Short (< .5*typical_line_length='+ str(round(ShortLineLengthThreshold,0)) + 'pixels) Lines -- Count = '+str(self.lines.shape[0]))
-            plt.imshow(self.houghImage, cmap='gray')
-            for line in self.lines:
-                plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
-            plt.show()
 
+            if PlotLevel > 2:
+                plt.title('Removed Short (< .5*typical_line_length='+ str(round(ShortLineLengthThreshold,0)) + 'pixels) Lines -- Count = '+str(self.lines.shape[0]))
+                plt.imshow(self.houghImage, cmap='gray')
+                for line in self.lines:
+                    plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
+                plt.show()
+
+            # Compute all intersections (vertices) of the lines
             all_vertices = self.doComputeVertices(self.lines)
 
+            # Remove all vertices formed by 2 lines if the closest point to the vertex for either line is far away (clean_distance)
+            # from the vertex
             typical_line_length = self.getTypicalLineLength(self.lines)
-            #clean_distance = .25*typical_line_length
             clean_distance = .35*typical_line_length
             self.vertices = self.doCleanVerticesByDistance(all_vertices, self.lines, clean_distance)
-            plt.title('Intersection of hough lines (Vertices) \n restricted by intersection to closest line endpoint <'+ str(round(clean_distance,2))+' pixels')
-            plt.imshow(self.houghImage, cmap='gray')
-            for vertex in self.vertices:
-                vertex_point = np.asarray(vertex[2])
-                plt.plot(vertex_point[0], vertex_point[1], marker='x', color='red')
-            plt.show()
 
-            #clusters, labels = self.doClusterVertices(self.vertices, self.lines, .114*typical_line_length)
+            if PlotLevel > 2:
+                plt.title('Intersection of hough lines (Vertices) \n restricted by intersection to closest line endpoint <'+ str(round(clean_distance,2))+' pixels')
+                plt.imshow(self.houghImage, cmap='gray')
+                for vertex in self.vertices:
+                    vertex_point = np.asarray(vertex[2])
+                    plt.plot(vertex_point[0], vertex_point[1], marker='x', color='red')
+                plt.show()
+
+            # Generate clusters of vertices
             clusters, labels = self.doClusterVertices(self.vertices, self.lines, .15*typical_line_length)
-            print 'cluster #0',clusters[0]
 
-            plt.title('Clustered '+str(clusters.shape[0])+' vertices '+str(self.vertices.shape[0])+'  lines'+str(lines.shape[0]))
-            plt.imshow(self.houghImage, cmap='gray')
-            for i,cluster in enumerate(clusters):
-                location = cluster[1]
-                plt.plot(location[0], location[1], marker='+', markersize=10, color='red')
-                plt.text(location[0], location[1], '#'+str(i))
-            plt.show()
+            if PlotLevel > 2:
+                plt.title('Clustered '+str(clusters.shape[0])+' vertices '+str(self.vertices.shape[0])+'  lines'+str(lines.shape[0]))
+                plt.imshow(self.houghImage, cmap='gray')
+                for i,cluster in enumerate(clusters):
+                    location = cluster[1]
+                    plt.plot(location[0], location[1], marker='+', markersize=10, color='red')
+                    plt.text(location[0], location[1], '#'+str(i))
+                plt.show()
 
-            # Form clusters at 'endpoints' from endpoints of segments that 'were not used' in original clusters
+            # Form vertices from endpoints of lines that were not used in generating any of the previous clusters
             endpoint_vertices = self.getUnusedLineSegmentEndpoints(clusters, self.lines)
-            print 'endpoint_vertices shape',endpoint_vertices.shape
-            plt.title('Endpoint vertices -- Count='+str(endpoint_vertices.shape[0]))
-            plt.imshow(self.houghImage, cmap='gray')
-            for vertex in endpoint_vertices:
-                plt.plot(vertex[2][0], vertex[2][1], marker='x',markersize=7, color='red')
-            plt.show()
 
-            print 'vertices shape',self.vertices.shape,'  endpoints shape',endpoint_vertices.shape
+            if PlotLevel > 2:
+                plt.title('Endpoint vertices -- Count='+str(endpoint_vertices.shape[0]))
+                plt.imshow(self.houghImage, cmap='gray')
+                for vertex in endpoint_vertices:
+                    plt.plot(vertex[2][0], vertex[2][1], marker='x',markersize=7, color='red')
+                plt.show()
+
+            # Add the endpoint vertices to the original vertex list and repeat clustering
             ndim2 = self.vertices.shape[1]
             self.vertices = np.reshape(np.append(self.vertices, endpoint_vertices), (-1,ndim2))
-            print 'new vertices shape',self.vertices.shape
             clusters, labels = self.doClusterVertices(self.vertices, self.lines, .15*typical_line_length)
-            print 'cluster #0',clusters[0]
 
-            plt.title('2nd Clustered '+str(clusters.shape[0])+' vertices '+str(self.vertices.shape[0])+'  lines'+str(lines.shape[0]))
-            plt.imshow(self.houghImage, cmap='gray')
-            for i,cluster in enumerate(clusters):
-                location = cluster[1]
-                plt.plot(location[0], location[1], marker='+', markersize=10, color='red')
-                plt.text(location[0], location[1], '#'+str(i))
-            plt.show()
+            if PlotLevel > 1:
+                plt.title('Final Clusters (using intersections and endpoints) '+str(clusters.shape[0])+' vertices '+str(self.vertices.shape[0])+'  lines'+str(lines.shape[0]))
+                plt.imshow(self.houghImage, cmap='gray')
+                for i,cluster in enumerate(clusters):
+                    location = cluster[1]
+                    plt.plot(location[0], location[1], marker='+', markersize=10, color='red')
+                    plt.text(location[0], location[1], '#'+str(i))
+                plt.show()
 
-
+            # Compute connections between clusters, based on the lines used to generate the vertices
+            # that comprise the clusters.
             connections = self.doConnectClusters(clusters, self.lines, typical_line_length)
-            print 'connections',connections
 
-            plt.title('Clusters Connected')
-            plt.imshow(self.image, cmap='gray', alpha=.95)
-            for connection in connections:
-                cluster1_mean = clusters[connection[0]][1]
-                cluster2_mean = clusters[connection[1]][1]
-                plt.plot([cluster1_mean[0],cluster2_mean[0]], [cluster1_mean[1],cluster2_mean[1]], linewidth=2, color='green')
-                #plt.text(.5*(cluster1_mean[0]+cluster2_mean[0]), .5*(cluster1_mean[1]+cluster2_mean[1]), str(connection[0])+' to '+str(connection[1]))
-            for i,cluster in enumerate(clusters):
-                location = cluster[1]
-                plt.plot(location[0], location[1], marker='o', markersize=5, color='red', linewidth=4)
-                #plt.text(location[0], location[1], '#'+str(i))
-            plt.show()
-
-
+            if PlotLevel > 0:
+                plt.title('Clusters Connected - ID '+str(imageID) + ' Name '+ imageName)
+                plt.imshow(self.image, cmap='gray', alpha=.95)
+                for connection in connections:
+                    cluster1_mean = clusters[connection[0]][1]
+                    cluster2_mean = clusters[connection[1]][1]
+                    plt.plot([cluster1_mean[0],cluster2_mean[0]], [cluster1_mean[1],cluster2_mean[1]], linewidth=2, color='green')
+                    #plt.text(.5*(cluster1_mean[0]+cluster2_mean[0]), .5*(cluster1_mean[1]+cluster2_mean[1]), str(connection[0])+' to '+str(connection[1]))
+                for i,cluster in enumerate(clusters):
+                    location = cluster[1]
+                    plt.plot(location[0], location[1], marker='o', markersize=5, color='red', linewidth=4)
+                    #plt.text(location[0], location[1], '#'+str(i))
+                plt.show()
 
     def main(self):
         if True:
