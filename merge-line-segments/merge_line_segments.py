@@ -396,20 +396,6 @@ class MergeLineSegments(RelaxationLabeling):
 
     def doConnectClusters(self, clusters, lines, typical_line_length, DistanceThreshold=.45, DotpThreshold=.025, PlotDebug=False):
 
-        if False:
-            for i in range(0,clusters.shape[0]):
-                vertices = clusters[i][0]
-                mean = clusters[i][1]
-                std = clusters[i][2]
-                plt.title('Clusters #'+str(i)+' vertices'+'  std='+str(std))
-                plt.imshow(self.image, cmap='gray', alpha=.25)
-                plt.plot(mean[0], mean[1], marker='+', markersize=15, color='blue')
-                for vertex in vertices:
-                    point = vertex[2]
-                    plt.plot(point[0], point[1], marker='x', markersize=10, color='red')
-                plt.show()
-
-
         if True:
             connections = []
             print 'doConnectClusters...........'
@@ -643,6 +629,43 @@ class MergeLineSegments(RelaxationLabeling):
 
         return d_between_line_segments, d_between_closest_endpoints, d_between_furthest_endpoints, d1, d2
 
+    def removeShortLines(self, lines, ShortLineLengthThreshold=0):
+        short_lines = []
+        for line in lines:
+            if self.lengthOfLine(line) >= ShortLineLengthThreshold:
+                short_lines = np.append(short_lines, line)
+        short_lines = np.reshape(short_lines, (-1,lines.shape[1]))
+        return short_lines
+
+    def getUnusedLineSegmentEndpoints(self, clusters, lines):
+        endpoint_vertices = []
+        for i in range(0, lines.shape[0]):
+            line = lines[i]
+            line_left_endpoint_used = False
+            line_right_endpoint_used = False
+            for j,cluster in enumerate(clusters):
+                vertices = cluster[0]
+                cluster_loc = cluster[1]
+                for vertex in vertices:
+                    if vertex[0] == i or vertex[1] == i:
+                        # Line used to form this vertex
+                        # Determine the endpoint that was used
+                        d1 = np.linalg.norm(cluster_loc - line[:2])
+                        d2 = np.linalg.norm(cluster_loc - line[2:])
+                        if d1 <= d2:
+                            line_left_endpoint_used = True
+                            cluster_index = j
+                        else:
+                            line_right_endpoint_used = True
+                            cluster_index = j
+
+            if line_left_endpoint_used and not line_right_endpoint_used:
+                endpoint_vertices.append([i, -cluster_index, line[2:]])
+            elif not line_left_endpoint_used and line_right_endpoint_used:
+                endpoint_vertices.append([i, -cluster_index, line[:2]])
+
+        return np.asarray(endpoint_vertices)
+
 
     def end2end(self):
         import pathlib
@@ -725,6 +748,17 @@ class MergeLineSegments(RelaxationLabeling):
                     plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
                 plt.show()
 
+            # Remove short lines
+            typical_line_length = self.getTypicalLineLength(self.lines)
+            ShortLineLengthFraction = .6
+            ShortLineLengthThreshold = ShortLineLengthFraction*typical_line_length
+            self.lines = self.removeShortLines(self.lines, ShortLineLengthThreshold=ShortLineLengthThreshold)
+            plt.title('Removed Short (< .5*typical_line_length='+ str(round(ShortLineLengthThreshold,0)) + 'pixels) Lines -- Count = '+str(self.lines.shape[0]))
+            plt.imshow(self.houghImage, cmap='gray')
+            for line in self.lines:
+                plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
+            plt.show()
+
             all_vertices = self.doComputeVertices(self.lines)
 
             typical_line_length = self.getTypicalLineLength(self.lines)
@@ -740,8 +774,9 @@ class MergeLineSegments(RelaxationLabeling):
 
             #clusters, labels = self.doClusterVertices(self.vertices, self.lines, .114*typical_line_length)
             clusters, labels = self.doClusterVertices(self.vertices, self.lines, .15*typical_line_length)
+            print 'cluster #0',clusters[0]
 
-            plt.title('Means of clustered vertices -- Count='+str(clusters.shape[0]))
+            plt.title('Clustered '+str(clusters.shape[0])+' vertices '+str(self.vertices.shape[0])+'  lines'+str(lines.shape[0]))
             plt.imshow(self.houghImage, cmap='gray')
             for i,cluster in enumerate(clusters):
                 location = cluster[1]
@@ -749,23 +784,46 @@ class MergeLineSegments(RelaxationLabeling):
                 plt.text(location[0], location[1], '#'+str(i))
             plt.show()
 
-            connections = self.doConnectClusters(clusters, self.lines, typical_line_length)
-            print 'connections',connections
+            # Form clusters at 'endpoints' from endpoints of segments that 'were not used' in original clusters
+            endpoint_vertices = self.getUnusedLineSegmentEndpoints(clusters, self.lines)
+            print 'endpoint_vertices shape',endpoint_vertices.shape
+            plt.title('Endpoint vertices -- Count='+str(endpoint_vertices.shape[0]))
+            plt.imshow(self.houghImage, cmap='gray')
+            for vertex in endpoint_vertices:
+                plt.plot(vertex[2][0], vertex[2][1], marker='x',markersize=7, color='red')
+            plt.show()
 
-            plt.title('Clusters Connected')
-            plt.imshow(self.image, cmap='gray', alpha=.25)
+            print 'vertices shape',self.vertices.shape,'  endpoints shape',endpoint_vertices.shape
+            ndim2 = self.vertices.shape[1]
+            self.vertices = np.reshape(np.append(self.vertices, endpoint_vertices), (-1,ndim2))
+            print 'new vertices shape',self.vertices.shape
+            clusters, labels = self.doClusterVertices(self.vertices, self.lines, .15*typical_line_length)
+            print 'cluster #0',clusters[0]
+
+            plt.title('2nd Clustered '+str(clusters.shape[0])+' vertices '+str(self.vertices.shape[0])+'  lines'+str(lines.shape[0]))
+            plt.imshow(self.houghImage, cmap='gray')
             for i,cluster in enumerate(clusters):
                 location = cluster[1]
                 plt.plot(location[0], location[1], marker='+', markersize=10, color='red')
                 plt.text(location[0], location[1], '#'+str(i))
+            plt.show()
+
+
+            connections = self.doConnectClusters(clusters, self.lines, typical_line_length)
+            print 'connections',connections
+
+            plt.title('Clusters Connected')
+            plt.imshow(self.image, cmap='gray', alpha=.95)
             for connection in connections:
                 cluster1_mean = clusters[connection[0]][1]
                 cluster2_mean = clusters[connection[1]][1]
-                plt.plot([cluster1_mean[0],cluster2_mean[0]], [cluster1_mean[1],cluster2_mean[1]], linewidth=1, color='green')
+                plt.plot([cluster1_mean[0],cluster2_mean[0]], [cluster1_mean[1],cluster2_mean[1]], linewidth=2, color='green')
                 #plt.text(.5*(cluster1_mean[0]+cluster2_mean[0]), .5*(cluster1_mean[1]+cluster2_mean[1]), str(connection[0])+' to '+str(connection[1]))
+            for i,cluster in enumerate(clusters):
+                location = cluster[1]
+                plt.plot(location[0], location[1], marker='o', markersize=5, color='red', linewidth=4)
+                #plt.text(location[0], location[1], '#'+str(i))
             plt.show()
-
-            
 
 
 
