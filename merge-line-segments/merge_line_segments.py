@@ -46,7 +46,7 @@ class MergeLineSegments(RelaxationLabeling):
     def readImage(self, imagePath):
         image = cv2.imread(imagePath, cv2.IMREAD_GRAYSCALE)
         imageColor = cv2.imread(imagePath, cv2.IMREAD_COLOR)
-        print 'Initial Image shape',image.shape
+        print('Initial Image shape: {}'.format(image.shape))
         return image, imageColor
 
     def doEdgeDetection(self, image, MinThreshold=50, MaxThreshold=150, ApertureSize=3):
@@ -327,13 +327,13 @@ class MergeLineSegments(RelaxationLabeling):
                     plt.title('Clusters ('+str(number_clusters)+') with Stds -- Max = '+str(round(max_cluster_std,0))+'  Threshold='+str(round(distance_threshold)))
                     plt.imshow(self.image, cmap='gray', alpha=.25)
                     for cluster in clusters:
-                        print 'shape of cluster',cluster.shape
-                        print 'first element of cluster',cluster[0]
-                        print 'shape of first element of cluster',cluster[0].shape
+                        print('shape of cluster: {}'.format(cluster.shape))
+                        print('first element of cluster: {}'.format(cluster[0]))
+                        print('shape of first element of cluster: {}'.format(cluster[0].shape))
                         cluster_points = self.getPointsFromVertices(cluster[0])
                         cluster_mean = cluster[1]
                         cluster_std = cluster[2]
-                        print 'cluster mean',cluster_mean,' shape',cluster_mean.shape
+                        print('cluster mean: {} shape: {}'.format(cluster_mean,cluster_mean.shape))
                         plt.plot(cluster_points[:,0], cluster_points[:,1],linewidth=0,marker='x')
                         plt.plot(cluster_mean[0], cluster_mean[1], marker='o', markersize=10)
                         plt.text(cluster_mean[0], cluster_mean[1], np.str(np.round(np.linalg.norm(cluster_std))))
@@ -352,7 +352,7 @@ class MergeLineSegments(RelaxationLabeling):
                     cluster_points = cluster[0][:,2]
                     cluster_mean = cluster[1]
                     cluster_std = cluster[2]
-                    print 'cluster mean',cluster_mean,' shape',cluster_mean.shape
+                    print('cluster mean: {} shape: {}'.format(cluster_mean,cluster_mean.shape))
                     plt.plot(cluster_mean[0], cluster_mean[1], marker='o', markersize=10, color='green')
                 plt.show()
 
@@ -516,7 +516,7 @@ class MergeLineSegments(RelaxationLabeling):
                 last_line = next_line
                 clean_lines = np.append(clean_lines, last_line)
         clean_lines = np.reshape(clean_lines, (-1, lines_sorted.shape[1]))
-        print 'shape of clean lines',clean_lines.shape
+        print('shape of clean lines: {}'.format(clean_lines.shape))
 
         # Merge close lines
         merged_lines = []
@@ -546,7 +546,7 @@ class MergeLineSegments(RelaxationLabeling):
         if not last_line_merged:
                 merged_lines = np.append(merged_lines, last_line)
         merged_lines = np.reshape(merged_lines, (-1,clean_lines.shape[1]))
-        print 'shape of merged lines',merged_lines.shape
+        print('shape of merged lines: {}'.format(merged_lines.shape))
 
         return merged_lines
 
@@ -607,10 +607,10 @@ class MergeLineSegments(RelaxationLabeling):
         d_between_furthest_endpoints = max(d_p11top21, d_p11top22, d_p12top21, d_p12top22)
 
         if debug:
-            print 'distanceBetweenLineSegments'
-            print 'l1',line1,'length',d1,'l2',line2,'length',d2
-            print 'd_p11tol2',d_p11tol2,'d_p12tol2',d_p12tol2,'d_p21tol1',d_p21tol1,'d_p22tol1',d_p22tol1
-            print 'distance',d_between_line_segments,'closest',d_between_closest_endpoints,'furthest',d_between_furthest_endpoints
+            print('distanceBetweenLineSegments')
+            print('l1: {} length: {} l2: {} length: {}'.format(line1,d1,line2,d2))
+            print('d_p11tol2: {} d_p12tol2: {} d_p21tol1: {} d_p22tol1: {}'.format(d_p11tol2,d_p12tol2,d_p21tol1,d_p22tol1))
+            print('distance: {} closest: {} furthest: {}'.format(d_between_line_segments,d_between_closest_endpoints,d_between_furthest_endpoints))
 
         return d_between_line_segments, d_between_closest_endpoints, d_between_furthest_endpoints, d1, d2
 
@@ -666,7 +666,7 @@ class MergeLineSegments(RelaxationLabeling):
             #self.distanceBetweenLineSegments(line1, line2)
             #merged_line = self.mergeTwoLineSegments(line1, line2)
             lines = self.mergeCloseLines(lines)
-            print 'merged lines',lines
+            print('merged lines: {}'.format(lines))
             exit()
 
         NumberDilationErodeIterations = 1
@@ -837,7 +837,7 @@ class MergeLineSegments(RelaxationLabeling):
     def main(self):
         if True:
             self.end2end()
-            print 'Number of line segments = ', self.lines.shape
+            print('Number of line segments: {}'.format(self.lines.shape))
         else:
             self.initLineSegmentObjectsAndLabels()
             super(MergeLineSegments, self).main()
