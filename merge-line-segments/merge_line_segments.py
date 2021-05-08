@@ -13,6 +13,7 @@ from relax import RelaxationLabeling
 
 import cv2
 import numpy as np
+np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
 import matplotlib.pyplot as plt
 from scipy.stats import ortho_group
 from scipy.ndimage.morphology import binary_dilation, binary_erosion
