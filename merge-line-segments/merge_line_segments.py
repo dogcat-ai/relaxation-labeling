@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 #import sklearn
 from sklearn.cluster import KMeans
+#from pytesseract import image_to_string
 #user = "mannyglover"
 #path = "/Users/" + user + "/Code/relaxation-labeling/core/"
 path = "~/Code/relaxation-labeling/core/"
@@ -582,6 +583,111 @@ class MergeLineSegments(RelaxationLabeling):
 
         return line_merged
 
+    def closestDistanceBetweenLines(self, line1, line2,clampAll=True,clampLine1=False,clampLine2=False):
+        a0 = np.asarray([line1[0], line1[1], 0])
+        a1 = np.asarray([line1[2], line1[3], 0])
+        b0 = np.asarray([line2[0], line2[1], 0])
+        b1 = np.asarray([line2[2], line2[3], 0])
+
+        if clampLine1:
+            clampA0=True
+            clampA1=True
+        if clampLine2:
+            clampB0=True
+            clampB1=True
+        if clampAll:
+            clampA0=True
+            clampA1=True
+            clampB0=True
+            clampB1=True
+
+
+        # Calculate Denominator
+        A = a1-a0
+        B = b1-b0
+        magA = np.linalg.norm(A)
+        magB = np.linalg.norm(B)
+
+        _A = A/magA
+        _B = B/magB
+
+        cross = np.cross(_A,_B)
+        denom = np.linalg.norm(cross)**2
+
+        # if lines are parallel (denom=0) test if lines overlap
+        # If they don't overlap then there is a closest point solution
+        # If they do overlap, there are infinite closest positions, 
+        # but there is a closest distance
+        if not denom:
+            d0 = np.dot(_A, (b0-a0))
+
+            # Overlap only possible with clamping
+            if clampA0 or clampA1 or clampB0 or clampB1:
+                d1 = np.dot(_A, (b1-a0))
+
+                # is segment B before A?
+                if d0 <= 0 and 0 >= d1:
+                    if clampA0 and clampB1:
+                        if np.absolute(d0) < np.absolute(d1):
+                            return a0,b0,np.linalg.norm(a0-b0)
+                        else:
+                            return a0,b1,np.linalg.norm(a0-b1)
+
+                # is segment B after A?
+                elif d0 >= magA and magA <= d1:
+                    if clampA1 and clampB0:
+                        if np.absolute(d0) < np.absolute(d1):
+                            return a1,b0,np.linalg.norm(a1-b0)
+                        else:
+                            return a1,b1,np.linalg.norm(a1-b1)
+
+            # Segments overlap, return distanc3 between parallel segments
+            return None, None, np.linalg.norm(((d0*_A)+a0)-b0)
+
+        # Lines criss cross
+        t = b0 - a0
+        detA = np.linalg.det([t,_B,cross])
+        detB = np.linalg.det([t,_A,cross])
+
+        t0 = detA/denom
+        t1 = detB/denom
+
+        pA = a0 + (_A*t0) # Projected closest point on segment A
+        pB = b0 + (_B*t1) # Projected closest point on segment B
+
+        # clamp projections
+        if clampA0 or clampA1 or clampB0 or clampB1:
+            if clampA0 and t0 < 0:
+                pA = a0
+            elif clampA1 and t0 > magA:
+                pA = a1
+
+            if clampB0 and t1 < 0:
+                pB = b0
+            elif clampB1 and t1 > magB:
+                pB = b1
+
+            # Clamp projection A
+            if (clampA0 and t0<0) or (clampA1 and t0>magA):
+                dot = np.dot(_B,(pA-b0))
+                if clampB0 and dot<0:
+                    dot = 0
+                elif clampB1 and dot>magB:
+                    dot = magB
+                pB = b0+(_B*dot)
+
+            # Clamp projection B
+            if (clampB0 and t1<0) or (clampB1 and t1>magB):
+                dot = np.dot(_A,(pB-a0))
+                if clampA0 and dot<0:
+                    dot = 0
+                elif clampA1 and dot>magA:
+                    dot = magA
+                pA = a0 + (_A*dot)
+
+
+        return pA, pB, np.linalg.norm(pA-pB)
+                    
 
     # For each segment endpoint over both lines, find the distance to the other line.
     # Define the distance between the two line segments as the maximum of thee 4 distances.
@@ -600,6 +706,7 @@ class MergeLineSegments(RelaxationLabeling):
         ds.append(abs((p22[0]-p21[0])*(p21[1]-p12[1]) - (p22[1]-p21[1])*(p21[0]-p12[0]))/d2) #d_p12tol2
         ds.append(abs((p12[0]-p11[0])*(p11[1]-p21[1]) - (p12[1]-p11[1])*(p11[0]-p21[0]))/d1) #d_p21tol1
         ds.append(abs((p12[0]-p11[0])*(p11[1]-p22[1]) - (p12[1]-p11[1])*(p11[0]-p22[0]))/d1) #d_p22tol1
+        #a,b,d_between_line_segments = self.closestDistanceBetweenLines(line1, line2)
         d_between_line_segments = np.max(ds)
 
         # Also, compute an ancillary measure, the distance between the closest segment endpoints
@@ -655,14 +762,38 @@ class MergeLineSegments(RelaxationLabeling):
 
         return np.asarray(endpoint_vertices)
 
+    def assignDoubleCovalentBonds(self, lines, vertices, double_covalent_lines):
+        print ('hello there from assignDoubleCovalentBonds')
+
+    def removeSecondaryDoubleCovalentLines(self, lines, double_covalent_lines):
+        for double_covalent_line in double_covalent_lines:
+            secondary_line = double_covalent_line[3]
+            for index,line in enumerate(lines):
+                if line[0] == secondary_line[0] and \
+                    line[1] == secondary_line[1] and \
+                    line[2] == secondary_line[2] and \
+                    line[3] == secondary_line[3]:
+                        # Remove secondary covalent bond line from lines
+                        lines = np.delete(lines, index, axis=0)
+
+                        # Go to next double covalent bond
+                        break
+
+        return lines
 
     def getDoubleCovalentBondLines(self, lines, Image=None, PlotDebug=False, MaxDistanceBetweenClosestEndpoints=20, MinDistanceBetweenCovalentLines=3, MaxDistanceBetweenCovalentLines=12, MaxVariationBetweenCovalentLines=3):
         covalent_lines = []
         for i in range(0,len(lines)):
             for j in range(i+1,len(lines)):
-                d_between_line_segments, d_between_closest_endpoints, d_between_furthest_endpoints, d1, d2, ds = \
+                d0_between_line_segments, d_between_closest_endpoints, d_between_furthest_endpoints, d1, d2, ds = \
                 self.distanceBetweenLineSegments(lines[i], lines[j])
+                #print('i line',lines[i])
+                #print('j line',lines[j])
+                a,b,d_closest = self.closestDistanceBetweenLines(lines[i], lines[j])
+                #print ('d1',d_between_line_segments,'d2',d_closest)
+                d_between_line_segments = d_closest
                 if d_between_line_segments < MaxDistanceBetweenCovalentLines and \
+                        d0_between_line_segments < MaxDistanceBetweenCovalentLines and \
                         d_between_line_segments > MinDistanceBetweenCovalentLines and \
                         np.std(ds) < MaxVariationBetweenCovalentLines and \
                         d_between_closest_endpoints < MaxDistanceBetweenClosestEndpoints:
@@ -672,8 +803,7 @@ class MergeLineSegments(RelaxationLabeling):
                             # probably not).  A 'sure' way would probably be construct the rings without determing which
                             # is the primary bond, and then come back based on the orientation of the ring and then decide
                             # precisely which one is the primary/secondary bond.
-                            covalent_lines.append([i, lines[i]])
-                            covalent_lines.append([j, lines[j]])
+                            covalent_lines.append([i, lines[i], j, lines[j], d_between_line_segments])
                             if PlotDebug:
                                 plt.title('Line'+str(i)+'  Line '+str(j)+ ' d_between'+str(round(d_between_line_segments,0))+' std'+str(round(np.std(ds),2)))
                                 plt.imshow(Image, cmap='gray')
@@ -692,8 +822,8 @@ class MergeLineSegments(RelaxationLabeling):
         imageDir = "../../relaxation-labeling-supporting-files"
         imageNames = [f for f in os.listdir(imageDir) if pathlib.Path(f).suffix == '.png']
         PlotLevel = 1
-        ids_to_process = range(0,len(imageNames))
-        #ids_to_process = [5]
+        #ids_to_process = range(0,len(imageNames))
+        ids_to_process = [5]
         start_time = time.time()
         for imageID,imageName in enumerate(imageNames):
             print('Processing image #',imageID,' = ',imageName)
@@ -789,16 +919,20 @@ class MergeLineSegments(RelaxationLabeling):
             # Get candidate double covalent bond lines
             self.lines, self.double_covalent_lines = self.getDoubleCovalentBondLines(self.lines, Image=self.houghImage)
 
-            if PlotLevel > 2:
-                plt.title('Bonds (red) Double Covalent Bonds (blue)')
-                plt.imshow(self.houghImage, cmap='gray')
-                for line in self.lines:
-                    plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
-                if len(self.double_covalent_lines) > 0:
-                    for double_covalent in self.double_covalent_lines:
-                        line = double_covalent[1]
-                        plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='blue')
-                plt.show()
+            if PlotLevel > 0:
+                    plt.title('Bonds (red) Double Covalent Bonds (blue)')
+                    plt.imshow(self.houghImage, cmap='gray')
+                    for line in self.lines:
+                        plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='red')
+                    if len(self.double_covalent_lines) > 0:
+                        for double_covalent in self.double_covalent_lines:
+                            line = double_covalent[1]
+                            plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='blue')
+                            line = double_covalent[3]
+                            plt.plot([line[0],line[2]], [line[1],line[3]], marker='x', linestyle='solid', color='green')
+                            plt.text(.5*(line[0]+line[2]), .5*(line[1]+line[3]), str(round(double_covalent[4],2)), color='red')
+                    plt.show()
+
 
             # Compute all intersections (vertices) of the lines
             all_vertices = self.doComputeVertices(self.lines)
@@ -809,7 +943,7 @@ class MergeLineSegments(RelaxationLabeling):
                 # The secondary lines, for example, are the ones on the interior of a ring
                 # The secondary lines will not be used to create the final vertices and will
                 # be associated with the primary line.
-                self.lines = self.assignDoubleCovalentBonds(self.lines, self.double_covalent_lines, all_vertices)
+                self.lines = self.assignDoubleCovalentBonds(self.lines, all_vertices, self.double_covalent_lines)
 
                 # The secondary covalent lines will not belong anymore to the self.lines list, however they will
                 # be associated with the proper primary covalent lines.
