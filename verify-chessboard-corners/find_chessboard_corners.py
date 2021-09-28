@@ -7,7 +7,25 @@ import debug_tabs as dt
 
 class FindChessboardCorners:
     def __init__(self):
-        pass
+        self.useColorImage = True
+        self.showOriginalImage = True
+
+        self.debugTabs = dt.DebugTabs()
+
+        # Make a list of calibration images
+        imageCase = 1
+        if imageCase == 1:
+            self.chessboardImagesNames = glob.glob('./supporting_files/camera_cal/*.jpg')
+            self.nx = 10
+            self.ny = 7
+        elif imageCase == 2:
+            self.chessboardImagesNames = glob.glob('./supporting_files/stereo_rig/*.png')
+            self.nx = 6
+            self.ny = 5
+        elif imageCase == 3:
+            self.chessboardImagesNames = glob.glob('./supporting_files/calib_example1/*.tif')
+            self.nx = 13
+            self.ny = 12
 
     def convert2uint8(self, image):
         if image.dtype != np.uint8:
@@ -23,79 +41,61 @@ class FindChessboardCorners:
         return image
 
     def main(self):
-        debugTabs = dt.DebugTabs()
 
-        USE_COLOR_IMAGE = True
-        SHOW_ORIGINAL_IMAGE = True
-
-        # Make a list of calibration images
-        Image_Case = 1
-        if Image_Case == 1:
-            chessboard_images_names = glob.glob('./supporting_files/camera_cal/*.jpg')
-            nx = 10
-            ny = 7
-        elif Image_Case == 2:
-            chessboard_images_names = glob.glob('./supporting_files/stereo_rig/*.png')
-            nx = 6
-            ny = 5
-        elif Image_Case == 3:
-            chessboard_images_names = glob.glob('./supporting_files/calib_example1/*.tif')
-            nx = 13
-            ny = 12
         # Select any index to grab an image from the list
-        for chessboard_image_name in chessboard_images_names:
+        for chessboardImageName in self.chessboardImagesNames:
             # Read in the image
-            chessboard_image = mpimg.imread(chessboard_image_name)
-            if SHOW_ORIGINAL_IMAGE:
-                cv2.imshow(chessboard_image_name, chessboard_image)
+            chessboardImage = mpimg.imread(chessboardImageName)
+            if self.showOriginalImage:
+                cv2.imshow(chessboardImageName, chessboardImage)
                 cv2.waitKey()
-                cv2.destroyWindow(chessboard_image_name)
+                cv2.destroyWindow(chessboardImageName)
 
             # Handle RGB and Grayscale images
-            image_is_grayscale = True
-            debugTabs.print ('image shape {}'.format(chessboard_image.shape))
-            debugTabs.print ('image data type {}'.format(chessboard_image.dtype))
+            imageIsGrayscale = True
+            self.debugTabs.print ('image shape {}'.format(chessboardImage.shape))
+            self.debugTabs.print ('image data type {}'.format(chessboardImage.dtype))
 
-            if len(chessboard_image.shape) == 3 and chessboard_image.shape[2] == 3:
-                if USE_COLOR_IMAGE:
-                    image = chessboard_image
-                    image_is_grayscale = False
+            if len(chessboardImage.shape) == 3 and chessboardImage.shape[2] == 3:
+                if self.useColorImage:
+                    image = chessboardImage
+                    imageIsGrayscale = False
                 else:
-                    image = cv2.cvtColor(chessboard_image, cv2.COLOR_RGB2GRAY)
-            elif len(chessboard_image.shape) == 2 or chessboard_image.shape[2] == 1:
-                image = chessboard_image
+                    image = cv2.cvtColor(chessboardImage, cv2.COLOR_RGB2GRAY)
+            elif len(chessboardImage.shape) == 2 or chessboardImage.shape[2] == 1:
+                image = chessboardImage
             else:
-                debugTabs.print ('Unhandled image {} unhandled shape {}'.format(chessboard_image_name, chessboard_image.shape))
+                self.debugTabs.print ('Unhandled image {} unhandled shape {}'.format(chessboardImageName, chessboardImage.shape))
 
             # Verify data is in 8-bit format (required by findChessboardCorners)
             image = self.convert2uint8(image)
 
             # Find the chessboard corners
-            ret, corners = cv2.findChessboardCorners(image, (nx, ny), None)
+            ret, corners = cv2.findChessboardCorners(image, (self.nx, self.ny), None)
             corners = np.squeeze(corners)
             
             # If found, draw corners
             if ret == True:
                 # Convert image to color for display
-                if image_is_grayscale:
-                    display_image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+                if imageIsGrayscale:
+                    displayImage = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
                 else:
-                    display_image = image
+                    displayImage = image
 
                 # Draw image and display the corners
-                cv2.drawChessboardCorners(display_image, (nx, ny), corners, ret)
+                cv2.drawChessboardCorners(displayImage, (self.nx, self.ny), corners, ret)
 
                 if False:
                     # Draw larger circles at chessboard corners for clarity
                     for w in range(0,len(corners)):
-                        color_img = cv2.circle(image, (corners[w][0], corners[w][1]), radius=24,color=(0,0,255), thickness=6)
-                    result_name = chessboard_image_name
+                        colorImg = cv2.circle(image, (corners[w][0], corners[w][1]), radius=24,color=(0,0,255), thickness=6)
+                    resultName = chessboardImageName
 
-                cv2.imshow(chessboard_image_name, display_image)
+                cv2.imshow(chessboardImageName, displayImage)
                 cv2.waitKey()
-                cv2.destroyWindow(chessboard_image_name)
+                cv2.destroyWindow(chessboardImageName)
             else:
-                debugTabs.print ('Unable to find chessboard corners for image {}'.format(chessboard_image_name))
+                self.debugTabs.print ('Unable to find chessboard corners for image {}'.format(chessboardImageName))
 
 
 findChessboardCorners = FindChessboardCorners()
