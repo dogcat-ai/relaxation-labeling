@@ -49,11 +49,12 @@ class DebugTabs:
             for i in range(postincrement,postincrement-1,-1):
                 self.decrement()
 
-# Testing:
-#"""
-debugTabs = DebugTabs()
-debugTabs.increment()
-debugTabs.print('test print')
-debugTabs.decrement()
-debugTabs.print('test print')
+def __main__():
+    # Testing:
+    #"""
+    debugTabs = DebugTabs()
+    debugTabs.increment()
+    debugTabs.print('test print')
+    debugTabs.decrement()
+    debugTabs.print('test print')
 #"""

@@ -3,17 +3,43 @@ import glob
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import numpy as np
+import debug_tabs as dt
 
+def convert2uint8(image):
+    if image.dtype != np.uint8:
+        # Scale to 0 to 255
+        imin = np.amin(image)
+        imax = np.amax(image)
+        image = 255*((image - imin)/(imax-imin))
+        # Round
+        image = np.around(image)
+        # Convert to uint8 type
+        image = image.astype(np.uint8)
+
+    return image
+
+
+debugTabs = dt.DebugTabs()
+
+USE_DEBUGTABS = True
 USE_COLOR_IMAGE = True
 SHOW_ORIGINAL_IMAGE = True
 
+
 # Make a list of calibration images
-chessboard_images_names = glob.glob('./supporting_files/camera_cal/*.jpg')
-nx = 10
-ny = 7
-#chessboard_images_names = glob.glob('./supporting_files/stereo_rig/*.png')
-#nx = 7
-#ny = 6
+Image_Case = 1
+if Image_Case == 1:
+    chessboard_images_names = glob.glob('./supporting_files/camera_cal/*.jpg')
+    nx = 10
+    ny = 7
+elif Image_Case == 2:
+    chessboard_images_names = glob.glob('./supporting_files/stereo_rig/*.png')
+    nx = 6
+    ny = 5
+elif Image_Case == 3:
+    chessboard_images_names = glob.glob('./supporting_files/calib_example1/*.tif')
+    nx = 13
+    ny = 12
 # Select any index to grab an image from the list
 for chessboard_image_name in chessboard_images_names:
     # Read in the image
@@ -21,10 +47,13 @@ for chessboard_image_name in chessboard_images_names:
     if SHOW_ORIGINAL_IMAGE:
         cv2.imshow(chessboard_image_name, chessboard_image)
         cv2.waitKey()
+        cv2.destroyWindow(chessboard_image_name)
 
     # Handle RGB and Grayscale images
     image_is_grayscale = True
-    print ('image shape',chessboard_image.shape)
+    debugTabs.print ('image shape {}'.format(chessboard_image.shape))
+    debugTabs.print ('image data type {}'.format(chessboard_image.dtype))
+
     if len(chessboard_image.shape) == 3 and chessboard_image.shape[2] == 3:
         if USE_COLOR_IMAGE:
             image = chessboard_image
@@ -34,8 +63,10 @@ for chessboard_image_name in chessboard_images_names:
     elif len(chessboard_image.shape) == 2 or chessboard_image.shape[2] == 1:
         image = chessboard_image
     else:
-        print ('Unhandled image',chessboard_image_name,' unhandled shape',chessboard_image.shape)
-        exit(1)
+        debugTabs.print ('Unhandled image {} unhandled shape {}'.format(chessboard_image_name, chessboard_image.shape))
+
+    # Verify data is in 8-bit format (required by findChessboardCorners)
+    image = convert2uint8(image)
 
     # Find the chessboard corners
     ret, corners = cv2.findChessboardCorners(image, (nx, ny), None)
@@ -60,5 +91,6 @@ for chessboard_image_name in chessboard_images_names:
 
         cv2.imshow(chessboard_image_name, display_image)
         cv2.waitKey()
+        cv2.destroyWindow(chessboard_image_name)
     else:
-        print ('Unable to find chessboard corners for image',chessboard_image_name)
+        debugTabs.print ('Unable to find chessboard corners for image {}'.format(chessboard_image_name))
