@@ -1,0 +1,1 @@
+The requirements.txt file may only be referring to the identify-chemical-structures project, not necessarily applicable to all the projects here.

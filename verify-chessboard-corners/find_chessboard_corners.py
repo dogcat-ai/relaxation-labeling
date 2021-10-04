@@ -15,7 +15,7 @@ class FindChessboardCorners:
         # Make a list of calibration images
         imageCase = 1
         if imageCase == 1:
-            self.chessboardImagesNames = glob.glob('./supporting_files/camera_cal/*.jpg')
+            self.chessboardImagesNames = glob.glob('../../relaxation-labeling-supporting-files/verify-chessboard-corners/camera_cal/*.jpg')
             self.nx = 10
             self.ny = 7
         elif imageCase == 2:
