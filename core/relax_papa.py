@@ -1,9 +1,27 @@
 import numpy as np
+import random
+from itertools import permutations
 
 class RelaxationLabeling(object):
 
-    def __init__(self, compatType, save):
-        self.compatType = compatType # Are we dealing with pairs (2) or triplets (3)
+    # n-dimensional cartesian points -> n-dimensional cartesian points
+    # n-dimensional cartesian points -> m-dimensional (projections) cartesian points
+    # n-dimensional lists -> n-dimensional lists
+    # n-dimensional lists -> m-dimensional lists
+    # labeling of chemical molecules
+    # compat speed up
+    #   multiplication of vector (and or matrices) not just elements one at a time
+    
+    def __init__(self, dim, maxNumPlots, noise, deleteLabel, objectOffset, shuffleObjects, objectScale, rotateObjects, compatType, save):
+        self.dim = dim
+        self.maxNumPlots = maxNumPlots
+        self.noise = noise
+        self.deleteLabel = deleteLabel
+        self.objectOffset = 3*np.ones((self.dim))
+        self.shuffleObjects = shuffleObjects
+        self.objectScale = objectScale
+        self.rotateObjects = rotateObjects
+        self.compatType = compatType
         self.save = save
         self.supportFactor = 1.0
         self.iterations = 30
