@@ -3,7 +3,7 @@ import numpy as np
 class RelaxationLabeling(object):
 
     def __init__(self, compatType, save):
-        self.compatType = compatType # Are we dealing with pairs (2) or triplets (3)
+        self.compatType = compatType # Are we dealing with two pairs of object-labels (2) or three pairs of object-labels (3)
         self.save = save
         self.supportFactor = 1.0
         self.iterations = 30
