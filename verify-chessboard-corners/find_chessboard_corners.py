@@ -8,6 +8,7 @@ import debug_tabs as dt
 class FindChessboardCorners:
     def __init__(self):
         self.debugTabs = dt.DebugTabs()
+        self.verbose = 1
         self.useColorImage = True
         self.showOriginalImage = True
         self.doLargerCircles = False
@@ -26,6 +27,11 @@ class FindChessboardCorners:
             self.chessboardImagesNames = glob.glob('../../relaxation-labeling-supporting-files/calib_example1/*.tif')
             self.nx = 13
             self.ny = 12
+
+        if self.verbose > 0:
+            self.debugTabs.print("chessboard images names: {}".format(self.chessboardImagesNames))
+            self.debugTabs.print("num columns: {}".format(self.nx))
+            self.debugTabs.print("num rows: {}".format(self.ny))
 
     def convert2uint8(self, image):
         if image.dtype != np.uint8:
@@ -51,8 +57,9 @@ class FindChessboardCorners:
 
     def handleRGBAndGrayscaleImages(self, image):
         self.imageIsGrayscale = True
-        self.debugTabs.print ('image shape {}'.format(image.shape))
-        self.debugTabs.print ('image data type {}'.format(image.dtype))
+        if self.verbose > 0:
+            self.debugTabs.print('image shape: {}'.format(image.shape))
+            self.debugTabs.print('image data type: {}'.format(image.dtype))
 
         if len(image.shape) == 3 and image.shape[2] == 3:
             if self.useColorImage:
@@ -63,7 +70,8 @@ class FindChessboardCorners:
         elif len(image.shape) == 2 or image.shape[2] == 1:
             self.image = image
         else:
-            self.debugTabs.print ('Unhandled image {} unhandled shape {}'.format(self.chessboardImageName, image.shape))
+            if self.verbose > 0:
+                self.debugTabs.print ('Unhandled image: {} unhandled shape: {}'.format(self.chessboardImageName, image.shape))
 
     def drawCorners(self, corners, ret):
         # Convert image to color for display
@@ -96,6 +104,16 @@ class FindChessboardCorners:
         # Find the chessboard corners
         ret, corners = cv2.findChessboardCorners(image, (self.nx, self.ny), None)
         corners = np.squeeze(corners)
+        # Print out coordinates of corners
+        if self.verbose > 0:
+            for c, corner in enumerate(corners):
+                sep = ' '
+                end = ''
+                if (c % self.nx) == 0:
+                    self.debugTabs.print('row {}:'.format(c // self.nx), end=end)
+                elif c % self.nx == 1:
+                    end = '\n'
+                self.debugTabs.print("{}".format(corner), end=end)
         
         # If found, draw corners
         if ret == True:

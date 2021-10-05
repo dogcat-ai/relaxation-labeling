@@ -34,14 +34,14 @@ class DebugTabs:
         for i in range(self.len):
             self.tabs += '\t'
 
-    def print(self, statement, preincrement=0, postincrement=0):
+    def print(self, statement, end='\n', sep=' ', preincrement=0, postincrement=0):
         if (preincrement > 0):
             for i in range(preincrement):
                 self.increment()
         elif (preincrement < 0):
             for i in range(preincrement,preincrement-1,-1):
                 self.decrement()
-        print('{}{}'.format(self.tabs, statement))
+        print('{}{}'.format(self.tabs, statement), end=end, sep=sep)
         if (postincrement > 0):
             for i in range(postincrement):
                 self.increment()
