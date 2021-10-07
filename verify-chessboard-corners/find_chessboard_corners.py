@@ -107,13 +107,14 @@ class FindChessboardCorners:
         # Print out coordinates of corners
         if self.verbose > 0:
             for c, corner in enumerate(corners):
-                sep = ' '
-                end = ''
+                end = '   '
+                row = c // self.nx
+                column = c - row*self.nx
                 if (c % self.nx) == 0:
                     self.debugTabs.print('row {}:'.format(c // self.nx), end=end)
-                elif c % self.nx == 1:
+                elif (c % self.nx) == (self.nx - 1):
                     end = '\n'
-                self.debugTabs.print("{}".format(corner), end=end)
+                self.debugTabs.print("({},{}): {}".format(row, column, corner), end=end)
         
         # If found, draw corners
         if ret == True:
