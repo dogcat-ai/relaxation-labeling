@@ -12,6 +12,7 @@ class FindChessboardCorners:
         self.useColorImage = True
         self.showOriginalImage = True
         self.doLargerCircles = False
+        self.corners = []
 
         # Make a list of calibration images
         imageCase = 1
@@ -73,7 +74,7 @@ class FindChessboardCorners:
             if self.verbose > 0:
                 self.debugTabs.print ('Unhandled image: {} unhandled shape: {}'.format(self.chessboardImageName, image.shape))
 
-    def drawCorners(self, corners, ret):
+    def drawCorners(self, ret):
         # Convert image to color for display
         if self.imageIsGrayscale:
             displayImage = cv2.cvtColor(self.image, cv2.COLOR_GRAY2RGB)
@@ -81,12 +82,12 @@ class FindChessboardCorners:
             displayImage = image
 
         # Draw image and display the corners
-        cv2.drawChessboardCorners(displayImage, (self.nx, self.ny), corners, ret)
+        cv2.drawChessboardCorners(displayImage, (self.nx, self.ny), self.corners, ret)
 
         if self.doLargerCircles:
             # Draw larger circles at chessboard corners for clarity
-            for w in range(0,len(corners)):
-                colorImg = cv2.circle(self.image, (corners[w][0], corners[w][1]), radius=24,color=(0,0,255), thickness=6)
+            for w in range(0,len(self.corners)):
+                colorImg = cv2.circle(self.image, (self.corners[w][0], self.corners[w][1]), radius=24,color=(0,0,255), thickness=6)
             resultName = self.chessboardImageName
 
         cv2.imshow(self.chessboardImageName, displayImage)
@@ -102,11 +103,11 @@ class FindChessboardCorners:
         self.image = self.convert2uint8(image)
 
         # Find the chessboard corners
-        ret, corners = cv2.findChessboardCorners(image, (self.nx, self.ny), None)
-        corners = np.squeeze(corners)
+        ret, self.corners = cv2.findChessboardCorners(image, (self.nx, self.ny), None)
+        self.corners = np.squeeze(self.corners)
         # Print out coordinates of corners
         if self.verbose > 0:
-            for c, corner in enumerate(corners):
+            for c, corner in enumerate(self.corners):
                 end = '   '
                 row = c // self.nx
                 column = c - row*self.nx
@@ -118,7 +119,7 @@ class FindChessboardCorners:
         
         # If found, draw corners
         if ret == True:
-            self.drawCorners(corners, ret)
+            self.drawCorners(ret)
         else:
             self.debugTabs.print ('Unable to find chessboard corners for image {}'.format(self.chessboardImageName))
 
