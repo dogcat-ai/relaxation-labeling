@@ -16,8 +16,6 @@ class VerifyChessboardCorners(RelaxationLabeling):
     def __init__(self):
         self.debugTabs = dt.DebugTabs()
         self.findChessboardCorners = FindChessboardCorners()
-        self.debugTabs.print("self.findChessboardCorners.corners: {}".format(self.findChessboardCorners.corners))
-        exit(1)
         self.numObjects = self.findChessboardCorners.nx*self.findChessboardCorners.ny
         self.numLabels = 2 # "good" or "bad"
         self.compatType = 3 # 1: i,j; 2: k,l; 3: m,n

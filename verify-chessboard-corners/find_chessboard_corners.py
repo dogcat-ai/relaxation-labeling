@@ -34,6 +34,8 @@ class FindChessboardCorners:
             self.debugTabs.print("num columns: {}".format(self.nx))
             self.debugTabs.print("num rows: {}".format(self.ny))
 
+        self.main()
+
     def convert2uint8(self, image):
         if image.dtype != np.uint8:
             # Scale to 0 to 255
@@ -128,7 +130,7 @@ class FindChessboardCorners:
             self.loop(chessboardImageName)
 
 
+"""
 findChessboardCorners = FindChessboardCorners()
 findChessboardCorners.main()
-
-
+"""
