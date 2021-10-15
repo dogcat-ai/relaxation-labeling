@@ -32,37 +32,103 @@ class VerifyChessboardCorners(RelaxationLabeling):
         #   corner i if it is on the same column and only one unit away
         #   (i.e., abs(row(k) - row(i)) = 1).
         # We say that a corner m is a "non next door neighbor" of
+        #   another corner i if there is a corner k that is a next door neighbor
+        #   of i and m is a next door neighbor of k
+        #   and k is in between i and m
+        #
+        # Get next door neighbors, same row.
+        #   What is the best way to organize this data structure?
+        #       One way is to have a list of lists of lists, where
+        #       the list is organized by row; i.e.,
+        #       with a 10 columns x 7 rows chessboard:
+        #          [[ 00,00 00,01, 00,02, ..., 00,09 ]
+        #           [ 01,00 01,01, 01,02, ..., 01,09 ]
+        #           [ ..,.. ..,.., ..,.., ..., ..,.. ]
+        #           [ 00,00 00,01, 00,02, ..., 00,09 ]]
+        #       In the table above, "wx,yz" should be interpreted as
+        #       a place holder, for a list corresponding to
+        #       the corner at "wx,yz".  This list will look like:
+        #           [ i j ] or [i]
+        #       where i j are the next door neighbors of corner "wx,yz"
+        #       and there will be no j where corner "wx,yz" is at the 0th
+        #       column or the last column.
+        #   Now that we have the organization of the data structure
+        #   articulated, let's describe how to compose/populate the data
+        #   structure:
+        #       First, we will create a list of lists of lists, where the
+        #           outermost list is ny units long, the middle list is nx
+        #           units long, and the innermost list is an empty list.
+        #       Second, we will iterate through all the corners in our chessboard,
+        #           using nx (number of columns) and ny (number of rows).
+        #           Unless our corner is the 0th corner of its row or
+        #           the last corner of its row, we will add the j-1th corner
+        #           and the j+1th corner to the innermost list, where j is the
+        #           the column of the "corner at hand".
+        #           If the "corner at hand" is the 0th corner,
+        #           we will only add the j+1th corner.
+        #           If the "corner at hand" is the last corner,
+        #           we will only add the j-1th corner.
+        nextDoorNeighborsSameRow = []
+        for i in range(self.findChessboardCorners.ny):
+            nextDoorNeighborsSameRow.append([])
+            for j in range(self.findChessboardCorners.nx):
+                nextDoorNeighborsSameRow[-1].append([])
+                if j == 0:
+                    nextDoorNeighborsSameRow[i][j].append(j+1)
+                elif j == self.findChessboardCorners.nx - 1:
+                    nextDoorNeighborsSameRow[i][j].append(j-1)
+                else:
+                    nextDoorNeighborsSameRow[i][j].append(j+1)
+                    nextDoorNeighborsSameRow[i][j].append(j-1)
+        self.debugTabs.print("nextDoorNeighborSameRow:")
+        self.debugTabs.print(nextDoorNeighborsSameRow)
+
+    def defineNeighborRelationsBak(self):
+        # We say that a corner k is a "next door neighbor" of another corner i
+        #   if it is on the same row and only one unit away
+        #   (i.e., abs(column(k) - column(i)) = 1),
+        #   or the "converse": a corner k is a "next door neighbor" of another
+        #   corner i if it is on the same column and only one unit away
+        #   (i.e., abs(row(k) - row(i)) = 1).
+        # We say that a corner m is a "non next door neighbor" of
         # another corner i if there is a corner k that is a next door neighbor
         # of i and m is a next door neighbor of k
         # and k is in between i and m
         #
         # Initialize neighbor relations lists:
         self.nextDoorNeighborsSameRow = []
+        self.debugTabs.print("[AFTER DECLARATION/DEFINITION] nextDoorNeighborsSameRow: {}".format(self.nextDoorNeighborsSameRow))
         self.nextDoorNeighborsSameColumn = []
         self.nonNextDoorNeighborsSameRow = []
         self.nonNextDoorNeighborsSameColumn = []
         for r, row in enumerate(self.objects):
             self.nextDoorNeighborsSameRow.append([])
+            self.debugTabs.print("[AFTER 1ST APPEND] nextDoorNeighborsSameRow: {} r: {}".format(self.nextDoorNeighborsSameRow, r))
             self.nextDoorNeighborsSameColumn.append([])
             self.nonNextDoorNeighborsSameRow.append([])
             self.nonNextDoorNeighborsSameColumn.append([])
             for c, column in enumerate(row):
                 self.nextDoorNeighborsSameRow[-1].append([])
+                self.debugTabs.print("[AFTER 2ND APPEND] nextDoorNeighborsSameRow: {} c: {}".format(self.nextDoorNeighborsSameRow, c))
                 self.nextDoorNeighborsSameColumn[-1].append([])
                 self.nonNextDoorNeighborsSameRow[-1].append([])
                 self.nonNextDoorNeighborsSameColumn[-1].append([])
                 for rr, rowAgain in enumerate(self.objects):
                     self.nextDoorNeighborsSameRow[r][c].append([])
+                    self.debugTabs.print("[AFTER 3RD APPEND] nextDoorNeighborsSameRow: {} rr: {}".format(self.nextDoorNeighborsSameRow, rr))
                     self.nonNextDoorNeighborsSameRow[r][c].append([])
                     self.nextDoorNeighborsSameColumn[r][c].append([])
                     self.nonNextDoorNeighborsSameColumn[r][c].append([])
                     for cc, columnAgain in enumerate(rowAgain):
                         self.nextDoorNeighborsSameRow[r][c][rr].append([])
+                        self.debugTabs.print("[AFTER 4TH APPEND] nextDoorNeighborsSameRow: {} cc: {}".format(self.nextDoorNeighborsSameRow, cc))
                         self.nonNextDoorNeighborsSameRow[r][c][rr].append([])
                         self.nextDoorNeighborsSameColumn[r][c][rr].append([])
                         self.nonNextDoorNeighborsSameColumn[r][c][rr].append([])
+                        """
                         self.debugTabs.print("nextDoorNeighborsSameRow: {}".format(self.nextDoorNeighborsSameRow))
                         self.debugTabs.print("r: {} c: {} rr: {} cc: {}".format(r,c,rr,cc))
+                        """
                         self.nextDoorNeighborsSameRow[r][c][cc][rr] = False
                         self.nextDoorNeighborsSameColumn[r][c][cc][rr] = False
                         self.nonNextDoorNeighborsSameRow[r][c][cc][rr] = False
