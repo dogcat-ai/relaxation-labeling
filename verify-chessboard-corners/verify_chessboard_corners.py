@@ -80,8 +80,52 @@ class VerifyChessboardCorners(RelaxationLabeling):
                 else:
                     nextDoorNeighborsSameRow[i][j].append(j+1)
                     nextDoorNeighborsSameRow[i][j].append(j-1)
-        self.debugTabs.print("nextDoorNeighborSameRow:")
+        self.debugTabs.print("nextDoorNeighborsSameRow:")
         self.debugTabs.print(nextDoorNeighborsSameRow)
+        # If I wanted to abide by software best practices,
+        # I would not copy and paste the above code and
+        # switch things around to define nextDoorNeighborsSameColumn,
+        # but I will go ahead and do just that, and 
+        # maybe I will clean up the code later.
+        nextDoorNeighborsSameColumn = []
+        for i in range(self.findChessboardCorners.ny):
+            nextDoorNeighborsSameColumn.append([])
+            for j in range(self.findChessboardCorners.nx):
+                nextDoorNeighborsSameColumn[-1].append([])
+                if i == 0:
+                    nextDoorNeighborsSameColumn[i][j].append(i+1)
+                elif i == self.findChessboardCorners.ny - 1:
+                    nextDoorNeighborsSameColumn[i][j].append(i-1)
+                else:
+                    nextDoorNeighborsSameColumn[i][j].append(i+1)
+                    nextDoorNeighborsSameColumn[i][j].append(i-1)
+        self.debugTabs.print("nextDoorNeighborsSameColumn:")
+        self.debugTabs.print(nextDoorNeighborsSameColumn)
+        # Now, I need to define the non next door neighbors (i.e.,
+        #   the next door neighbor of the next door neighbor, in the
+        #   same direction).
+        # How will I define the nonNextDoorNeighborsSameRow?
+        #   As mentioned above, the non next door neighbor is the
+        #   next door neighbor of the next door neighbor, in the
+        #   same direction.  In this case, that direction is horizontal,
+        #   because we are dealing with the same row.
+        # It makes sense to me to copy the nextDoorNeighborsSameRow
+        #   list of lists of lists, and to "go one level deeper"--i.e.,
+        #   use the next door neighbors to calculate the non next door neighbor,
+        #   and insert this value at the next door neighbor.
+        # Let me be more clear.  Take a chessboard corner: let's say 02,03
+        #   i.e., the corner at the 2nd row and the 3rd column.  Now,
+        #   we know that its neighbors on the same row are 02,02 and 02,04.
+        #   We go from the source corner, 02,03, to one of its neighbors,
+        #   let's say 02,04.  We take the difference between
+        #   the source column and the destination column, 03 - 04 = -1,
+        #   and we go in the opposite direction, starting at
+        #   the destination column: i.e., 04 + -1*-1 = 04 + 1 = 05.
+        # To use the other neighbor as our starting point, we have
+        #   03 - 02 = 1; 02 + -1*1 = 02 - 1 = 1.
+        nonNextDoorNeighborsSameRow = nextDoorNeighborsSameRow.deepcopy
+
+        
 
     def defineNeighborRelationsBak(self):
         # We say that a corner k is a "next door neighbor" of another corner i
