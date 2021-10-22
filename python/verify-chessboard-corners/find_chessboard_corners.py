@@ -1,5 +1,6 @@
 import cv2
 import glob
+import copy
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import numpy as np
@@ -17,15 +18,15 @@ class FindChessboardCorners:
         # Make a list of calibration images
         imageCase = 1
         if imageCase == 1:
-            self.chessboardImagesNames = glob.glob('../../relaxation-labeling-supporting-files/verify-chessboard-corners/camera_cal/*.jpg')
+            self.chessboardImagesNames = glob.glob('./images/camera_cal/*.jpg')
             self.nx = 10
             self.ny = 7
         elif imageCase == 2:
-            self.chessboardImagesNames = glob.glob('../../relaxation-labeling-supporting-files/stereo_rig/*.png')
+            self.chessboardImagesNames = glob.glob('./images/stereo_rig/*.png')
             self.nx = 6
             self.ny = 5
         elif imageCase == 3:
-            self.chessboardImagesNames = glob.glob('../../relaxation-labeling-supporting-files/calib_example1/*.tif')
+            self.chessboardImagesNames = glob.glob('./images/calib_example1/*.tif')
             self.nx = 13
             self.ny = 12
 

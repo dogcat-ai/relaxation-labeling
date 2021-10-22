@@ -123,7 +123,7 @@ class VerifyChessboardCorners(RelaxationLabeling):
         #   the destination column: i.e., 04 + -1*-1 = 04 + 1 = 05.
         # To use the other neighbor as our starting point, we have
         #   03 - 02 = 1; 02 + -1*1 = 02 - 1 = 1.
-        nonNextDoorNeighborsSameRow = nextDoorNeighborsSameRow.deepcopy
+        nonNextDoorNeighborsSameRow = copy.deepcopy(nextDoorNeighborsSameRow)
 
         
 
