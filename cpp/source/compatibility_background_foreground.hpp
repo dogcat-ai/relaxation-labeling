@@ -3,7 +3,7 @@
 
 #include "compatibility.hpp"
 
-struct CompatibilityBackgroundForeground : Compatibility {
+struct CompatibilityBackgroundForeground : Compatibility2Pairs {
     CompatibilityBackgroundForeground(size_t numObjects, size_t numLabels);
     void calculate();
 };
