@@ -11,6 +11,22 @@ void CompatibilityChessboard::defineObjectsAndLabels()
 {
 }
 
+void calculate(FindChessboardCorners findChessboardCorners )
+{
+    for (size_t r=0; r<numRows; ++r)
+    {
+        for (size_t c=0; c<numColumns; ++c)
+        {
+            calculateOneCorner(r,c,numRows,numColumns);
+        }
+    }
+}
+
+void calculateOneCorner(size_t r,size_t c,size_t numRows,size_t numColumns)
+{
+
+}
+
 void CompatibilityChessboard::calculate()
 {
     if (verbose > 1)
