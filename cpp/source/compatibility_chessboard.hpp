@@ -5,6 +5,7 @@
 
 struct CompatibilityChessboard : Compatibility {
     CompatibilityChessboard (size_t numObjects, size_t numLabels);
+    void defineObjectsAndLabels();
     void calculate();
 };
 

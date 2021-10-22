@@ -7,6 +7,10 @@ CompatibilityChessboard::CompatibilityChessboard(size_t numObjects, size_t numLa
     calculate();
 }
 
+void CompatibilityChessboard::defineObjectsAndLabels()
+{
+}
+
 void CompatibilityChessboard::calculate()
 {
     if (verbose > 1)
