@@ -3,7 +3,7 @@
 
 #include "compatibility.hpp"
 
-struct CompatibilityDummy : Compatibility {
+struct CompatibilityDummy : Compatibility2Pairs {
     CompatibilityDummy(size_t numObjects, size_t numLabels);
     void calculate();
 };

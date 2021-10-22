@@ -8,7 +8,7 @@
 #include "compatibility_dummy.hpp"
 
 CompatibilityDummy::CompatibilityDummy(size_t numObjects, size_t numLabels) :
-    Compatibility(numObjects, numLabels)
+    Compatibility2Pairs(numObjects, numLabels)
 {
     calculate();
 }

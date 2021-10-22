@@ -3,7 +3,7 @@
 #include "compatibility_background_foreground.hpp"
 
 CompatibilityBackgroundForeground::CompatibilityBackgroundForeground(size_t numObjects, size_t numLabels) :
-    Compatibility(numObjects, numLabels)
+    Compatibility2Pairs(numObjects, numLabels)
 {
     calculate();
 }
