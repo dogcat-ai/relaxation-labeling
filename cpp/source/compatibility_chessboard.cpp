@@ -11,7 +11,7 @@ void CompatibilityChessboard::defineObjectsAndLabels()
 {
 }
 
-void calculate(FindChessboardCorners findChessboardCorners )
+void CompatibilityChessboard::calculate(FindChessboardCorners findChessboardCorners )
 {
     for (size_t r=0; r<numRows; ++r)
     {
@@ -22,9 +22,53 @@ void calculate(FindChessboardCorners findChessboardCorners )
     }
 }
 
-void calculateOneCorner(size_t r,size_t c,size_t numRows,size_t numColumns)
+void CompatibilityChessboard::calculateOneCorner(size_t r,size_t c,size_t numRows,size_t numColumns)
 {
+    double compatibilityValue = 0;
+    int numDirections = 0;
 
+    if (c+2 < numColumns)
+    {
+        compatibilityValue += calculateOneDirection(RIGHT, r, c, r, c+1, r, c+2);
+        numDirections++;
+    }
+    if (c-2 < numColumns)
+    {
+        compatibilityValue += calculateOneDirection(LEFT, r, c, r, c-1, r, c-2);
+        numDirections++;
+    }
+    if (r-2 < numColumns)
+    {
+        compatibilityValue += calculateOneDirection(UP, r, c, r-1, c, r-2, c);
+        numDirections++;
+    }
+    if (r+2 < numColumns)
+    {
+        compatibilityValue += calculateOneDirection(UP, r, c, r-1, c, r-2, c);
+        numDirections++;
+    }
+}
+
+double CompatibilityChessboard::calculateOneDirection(Direction direction, size_t rowOrigin, size_t columnOrigin, size_t rowNear, size_t columnNear, size_t rowFar, size_t columnFar)
+{
+    Eigen::Vector2d origin;
+    origin[0] = findChessboardCorners.corners[rowOrigin][columnOrigin][0];
+    origin[1] = findChessboardCorners.corners[rowOrigin][columnOrigin][1];
+
+    Eigen::Vector2d near;
+    near[0] = findChessboardCorners.corners[rowNear][columnNear][0];
+    near[1] = findChessboardCorners.corners[rowNear][columnNear][1];
+
+    Eigen::Vector2d far;
+    far[0] = findChessboardCorners.corners[rowFar][columnFar][0];
+    far[1] = findChessboardCorners.corners[rowFar][columnFar][1];
+
+    Eigen::vector2d originToNear = near - origin;
+    Eigen::vector2d nearToFar = far - near;
+
+    double compatibilityValue = originToNear.dot(nearToFar);
+
+    return compatibilityValue;
 }
 
 void CompatibilityChessboard::calculate()
