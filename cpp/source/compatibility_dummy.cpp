@@ -31,7 +31,7 @@ void CompatibilityDummy::calculate()
 
         for (int i = 0; i < numObjects; ++i)
         {
-            compatibilityFiles.reserve(numLabels);
+            compatibilityFiles[i].reserve(numLabels);
             for (int j = 0; j < numLabels; ++j)
             {
                 std::stringstream fileName;
