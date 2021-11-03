@@ -18,6 +18,7 @@ RelaxationLabeling::RelaxationLabeling(const Eigen::Tensor<double, 4>& compatibi
     strength = Eigen::MatrixXd::Constant(numObjects, numLabels, initialStrength);
     support = Eigen::MatrixXd::Constant(numObjects, numLabels, 0.0);
     
+    std::vector<std::unique_ptr<std::ofstream> > strengthFiles(numObjects);
     while (iteration < iterationLimit)
     {
         iterate();
