@@ -1,0 +1,1 @@
+add_library(compatibility_background_foreground compatibility_background_foreground.hpp compatibility_background_foreground.cpp)

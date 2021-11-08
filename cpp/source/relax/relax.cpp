@@ -17,7 +17,7 @@ RelaxationLabeling::RelaxationLabeling(const Eigen::Tensor<double, 4>& compatibi
     double initialStrength = 1.0/numLabels;
     strength = Eigen::MatrixXd::Constant(numObjects, numLabels, initialStrength);
     support = Eigen::MatrixXd::Constant(numObjects, numLabels, 0.0);
-    
+
     while (iteration < iterationLimit)
     {
         iterate();
@@ -33,6 +33,7 @@ void RelaxationLabeling::iterate()
 
 void RelaxationLabeling::updateSupport()
 {
+    
     for (size_t i = 0; i < numObjects; ++i)
     {
         double iMinimumSupport = std::numeric_limits<double>::max();

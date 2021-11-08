@@ -10,8 +10,5 @@ include_directories(Eigen3::Eigen)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-add_library(relax relax.cpp relax.hpp compatibility_background_foreground.hpp compatibility.hpp compatibility.cpp compatibility_background_foreground.cpp compatibility_dummy.hpp compatibility_dummy.cpp)
-target_link_libraries(relax Eigen3::Eigen ${OpenCV_LIBS} opencv_ximgproc)
-
-add_executable(relax_demo relax_demo.cpp)
-target_link_libraries(relax_demo relax)
+add_subdirectory(problems)
+add_subdirectory(relax)
