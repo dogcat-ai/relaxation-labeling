@@ -10,4 +10,10 @@ II. Follow the instructions therein.
             a. Don't forget to `git add .gitattributes`.
     C. There is no step 3/step C.
         1. Just add/commit/push as you normally would.
+# Turn tabs to 4 spaces
+filetype plugin indent on
+set tabstop=4
+set shiftwidth=4
+set expandtab
+
         

@@ -7,8 +7,10 @@
 
 #include "compatibility_points3d.hpp"
 
-CompatibilityPoints3d::CompatibilityPoints3d(size_t numObjects, size_t numLabels) :
-    Compatibility2Pairs(numObjects, numLabels)
+CompatibilityPoints3d::CompatibilityPoints3d(size_t numObjects, size_t numLabels, const std::vector<Eigen::Vector3d>& objects, const std::vector<Eigen::Vector3d>& labels) :
+    Compatibility2Pairs(numObjects, numLabels),
+    objects(objects),
+    labels(labels)
 {
     calculate();
 }
@@ -46,6 +48,7 @@ void CompatibilityPoints3d::calculate()
         }
     }
 
+    verbose = 2;
     for (size_t i = 0; i < numObjects; ++i)
     {
         if (verbose > 1)
@@ -70,13 +73,20 @@ void CompatibilityPoints3d::calculate()
                 }
                 for (size_t l = 0; l < numLabels; ++l)
                 {
-                    if (i == j && k == l)
+                    Eigen::Vector3d Vo = objects[k] - objects[i];
+                    Eigen::Vector3d Vl = labels[l] - labels[j];
+
+                    int offset = 0;
+                    if (i == k && j == l) {
+                        compatibility(i, j, k, l) = offset + 0.0;
+                    }
+                    else if (i == k || j == l)
                     {
-                        compatibility(i, j, k, l) = 1.0;
+                        compatibility(i, j, k, l) = offset - 1.0;
                     }
                     else
                     {
-                        compatibility(i, j, k, l) = -1.0;
+                        compatibility(i, j, k, l) = offset + Vo.dot(Vl)/(Vo.norm()*Vl.norm());
                     }
                     if (verbose > 1)
                     {
@@ -92,4 +102,5 @@ void CompatibilityPoints3d::calculate()
             compatibilityFiles[i][j]->close();
         }
     }
+    //exit(0);
 }

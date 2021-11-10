@@ -35,10 +35,40 @@ void RelaxationLabeling::updateSupport()
 {
     support.array() = 0.0;
 
+    /*
+    std::cout << " strength " << strength << std::endl;
+    std::cout << "  strength*strength " << strength.array()*strength.array()  << std::endl;
+    std::cout << "  sum strength*strength " << (strength.array()*strength.array()).sum()  << std::endl;
+    exit(0);
+    */
+
+    //auto m = Eigen::Map<Eigen::Matrix<
+     //        double,           /* scalar element type */
+      //       Eigen::Dynamic,  /* num_rows is a run-time value */
+       //      Eigen::Dynamic,  /* num_cols is a run-time value */
+        //     Eigen::RowMajor  /* tensorflow::Tensor is always row-major */>>(
+         //        t.flat<float>().data(),  /* ptr to data */
+          //       t.dim_size(0),           /* num_rows */
+           //      t.dim_size(1)            /* num_cols */);
+
+
+    std::array<long, 4> offset = {0,0,0,0};  // Starting point
+    std::array<long, 4> extent = {1,0,numObjects,numLabels};  // Starting point
+    std::array<long, 2> shape = {numObjects,numLabels};  // Shape of matrix
+
+
+    //support = strength*strength;
+    //std::cout << "dimension of support: rows " << support.rows() << "  cols: " << support.cols() << std::endl;
+    //exit(0);
+    
     for (size_t i = 0; i < numObjects; ++i)
     {
         for (size_t j = 0; j < numLabels; ++j)
         {
+            auto m = Eigen::Map<Eigen::Matrix< double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor >> (compatibility.slice(offset, extent).reshape(shape).flat<double>().data(), numObjects, numLabels);
+                    //std::cout << compatibility.slice(offset, extent).reshape(shape).array() << std::endl;
+           // float xx = compatibility.slice(offset, extent).reshape(shape).array()*strength.array();
+
             for (size_t k = 0; k < numObjects; ++k)
             {
                 for (size_t l = 0; l < numLabels; ++l)
