@@ -48,7 +48,6 @@ void CompatibilityPoints3d::calculate()
         }
     }
 
-    verbose = 2;
     for (size_t i = 0; i < numObjects; ++i)
     {
         if (verbose > 1)

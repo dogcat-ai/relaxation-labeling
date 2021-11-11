@@ -4,7 +4,7 @@ Compatibility::Compatibility(size_t numObjects, size_t numLabels) :
     numObjects(numObjects),
     numLabels(numLabels),
     save(true),
-    verbose(2)
+    verbose(1)
 {
 }
 
