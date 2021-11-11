@@ -35,17 +35,18 @@ void RelaxationLabeling::updateSupport()
 {
     support.array() = 0.0;
 
+    std::array<long, 4> extent = {1,1,numObjects,numLabels};  // Starting point
+
     for (size_t i = 0; i < numObjects; ++i)
     {
         for (size_t j = 0; j < numLabels; ++j)
         {
-            for (size_t k = 0; k < numObjects; ++k)
-            {
-                for (size_t l = 0; l < numLabels; ++l)
-                {
-                    support(i,j) += compatibility(i,j,k,l)*strength(k,l);
-                }
-            }
+            std::array<long, 4> offset = {long(i),long(j),0,0};  // Starting point
+            Eigen::Tensor<double, 4> compatSliceTensor = compatibility.slice(offset, extent);
+
+            Eigen::MatrixXd compatSlice = Eigen::Map<const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> (compatSliceTensor.data(), numObjects, numLabels);
+
+            support(i,j) = (compatSlice.array()*strength.array()).sum();
         }
         if (verbose > 1)
         {
