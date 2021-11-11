@@ -9,7 +9,7 @@ RelaxationLabeling::RelaxationLabeling(const Eigen::Tensor<double, 4>& compatibi
     iteration(0),
     iterationLimit(20),
     save(true),
-    verbose(2)
+    verbose(0)
 {
     numObjects = compatibility.dimension(0);
     numLabels = compatibility.dimension(1);
@@ -37,9 +37,7 @@ void RelaxationLabeling::iterate()
 
 void RelaxationLabeling::updateSupport()
 {
-    support.array() = 0.0;
-
-    std::array<long, 4> extent = {1,1,numObjects,numLabels};  // Starting point
+    std::array<long, 4> extent = {1,1,numObjects,numLabels};  // Size of array to slice from starting point
 
     for (size_t i = 0; i < numObjects; ++i)
     {
