@@ -22,6 +22,10 @@ RelaxationLabeling::RelaxationLabeling(const Eigen::Tensor<double, 4>& compatibi
     {
         iterate();
     }
+    for (size_t i = 0; i < numObjects; ++i)
+    {
+        std::cout << "final strength for object " << i << std::endl << strength.row(i) << std::endl;
+    }
 }
 
 void RelaxationLabeling::iterate()
@@ -68,20 +72,8 @@ void RelaxationLabeling::normalizeSupport(SupportNormalizationMethod snm)
 
 void RelaxationLabeling::updateStrength()
 {
-    for (size_t i = 0; i < numObjects; ++i)
-    {
-        double sumStrengths = 0;
-        for (size_t j = 0; j < numLabels; ++j)
-        {
-            strength(i,j) *= (1.0+support(i,j)*supportFactor);
-            sumStrengths += strength(i,j);
-        }
-        normalizeStrength(i, sumStrengths);
-        if (verbose > 1)
-        {
-            std::cout << "strength for object " << i << std::endl << strength.row(i) << std::endl;
-        }
-    }
+    strength = strength.array() + strength.array()*support.array()*supportFactor;
+    strength.rowwise().normalize();
 }
 
 void RelaxationLabeling::normalizeStrength(size_t i, double sumStrengths)
