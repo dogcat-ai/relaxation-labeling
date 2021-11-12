@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.4)
+
+add_library(compatibility_points3d_3pair compatibility_points3d_3pair.hpp compatibility_points3d_3pair.cpp)
+
+target_link_libraries(compatibility_points3d_3pair compatibility)
