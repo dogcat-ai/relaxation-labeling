@@ -13,13 +13,14 @@ struct RelaxationLabeling {
     Eigen::MatrixXd support; // can be thought of as the "current marginal probability" of object i being label j.  That is, it is calculated based on the current strength and the compatibility, and will be used on this iteration to push strengths up and down.
     int iteration;
     int iterationLimit;
+    enum class SupportNormalizationMethod {ALL_IJ, PER_I, MAX_RANGE};
     bool save;
     int verbose;
-    
+
     RelaxationLabeling(const Eigen::Tensor<double, 4>& compatibility);
     void iterate();
     void updateSupport();
-    void normalizeSupport(size_t i, double iMinimumSupport, double iMaximumSupport);
+    void normalizeSupport(SupportNormalizationMethod snm);
     void updateStrength();
     void normalizeStrength(size_t i, double iSumStrengths);
     void assign();

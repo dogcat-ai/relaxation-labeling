@@ -5,9 +5,9 @@
 
 RelaxationLabeling::RelaxationLabeling(const Eigen::Tensor<double, 4>& compatibility) :
     compatibility(compatibility),
-    supportFactor(0.2),
+    supportFactor(0.5),
     iteration(0),
-    iterationLimit(10),
+    iterationLimit(20),
     save(true),
     verbose(2)
 {
@@ -34,44 +34,35 @@ void RelaxationLabeling::iterate()
 
 void RelaxationLabeling::updateSupport()
 {
+    support.array() = 0.0;
+
     for (size_t i = 0; i < numObjects; ++i)
     {
-        double iMinimumSupport = std::numeric_limits<double>::max();
-        double iMaximumSupport = std::numeric_limits<double>::min();
         for (size_t j = 0; j < numLabels; ++j)
         {
-            support(i,j) = 0.0;
             for (size_t k = 0; k < numObjects; ++k)
             {
                 for (size_t l = 0; l < numLabels; ++l)
                 {
-                    double ijklSupport = strength(k,l)*compatibility(i,j,k,l);
-                    support(i,j) += ijklSupport;
-                    if (ijklSupport < iMinimumSupport)
-                    {
-                        iMinimumSupport = ijklSupport;
-                    }
-                    if (ijklSupport > iMaximumSupport)
-                    {
-                        iMaximumSupport = ijklSupport;
-                    }
+                    support(i,j) += compatibility(i,j,k,l)*strength(k,l);
                 }
             }
-            normalizeSupport(i, iMinimumSupport, iMaximumSupport);
         }
         if (verbose > 1)
         {
-            std::cout << "support for object " << i << std::endl << support.row(i) << std::endl;
+            std::cout << "raw support for object " << i << std::endl << support.row(i) << std::endl;
         }
     }
+    normalizeSupport(SupportNormalizationMethod::ALL_IJ);
 }
 
-void RelaxationLabeling::normalizeSupport(size_t i, double iMinimumSupport, double iMaximumSupport)
+void RelaxationLabeling::normalizeSupport(SupportNormalizationMethod snm)
 {
-    iMaximumSupport -= iMinimumSupport;
-    for (size_t j = 0; j < numLabels; ++j)
+    if (snm == SupportNormalizationMethod::ALL_IJ)
     {
-        support(i,j) = (support(i,j) - iMinimumSupport)/iMaximumSupport;
+        double minElement = support.minCoeff();
+        double maxElement = support.maxCoeff();
+        support = (support.array() - minElement)/maxElement;
     }
 }
 
@@ -82,7 +73,7 @@ void RelaxationLabeling::updateStrength()
         double sumStrengths = 0;
         for (size_t j = 0; j < numLabels; ++j)
         {
-            strength(i,j) += support(i,j)*supportFactor;
+            strength(i,j) *= (1.0+support(i,j)*supportFactor);
             sumStrengths += strength(i,j);
         }
         normalizeStrength(i, sumStrengths);
@@ -93,11 +84,11 @@ void RelaxationLabeling::updateStrength()
     }
 }
 
-void RelaxationLabeling::normalizeStrength(size_t i, double iSumStrengths)
+void RelaxationLabeling::normalizeStrength(size_t i, double sumStrengths)
 {
     for (size_t j = 0; j < numLabels; ++j)
     {
-        strength(i, j) /= iSumStrengths;
+        strength(i, j) /= sumStrengths;
     }
 }
 
