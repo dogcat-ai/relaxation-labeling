@@ -81,11 +81,11 @@ void CompatibilityChessboard::calculate()
         std::cout << "About to calculate compatibility:" << std::endl;
     }
     
-    // output files of compatibility figures if desired
-    std::vector<std::vector<std::vector<std::vector<std::unique_ptr<std::ofstream>>>>> compatibilityFiles(numObjects,
-            std::vector<std::vector<std::vector<std::unique_ptr<std::ofstream>>>>(numLabels, 
-                std::vector<std::vector<std::unique_ptr<std::ofstream>>>(numObjects,
-                    std::vector<std::unique_ptr<std::ofstream>>(numLabels))));
+    std::vector<std::vector<std::vector<std::vector<std::shared_ptr<std::ofstream>>>>> compatibilityFiles(numObjects,
+            std::vector<std::vector<std::vector<std::shared_ptr<std::ofstream>>>>(numLabels, 
+                std::vector<std::vector<std::shared_ptr<std::ofstream>>>(numObjects,
+                    std::vector<std::shared_ptr<std::ofstream>>(numLabels))));
+
     if (save)
     {
         std::ofstream summaryFile("structure.csv", std::ofstream::out);
@@ -106,7 +106,6 @@ void CompatibilityChessboard::calculate()
                     {
                         std::stringstream fileName;
                         fileName << "compatibility_" << i << "_" << j << "_" << k << "_" << l << ".csv";
-                       //compatibilityFiles[i].emplace_back(std::make_unique<std::ofstream>());
                         compatibilityFiles[i][j][k][l]->open(fileName.str().c_str());
                         for (int n = 0; n < numLabels; ++n)
                         {
@@ -136,39 +135,39 @@ void CompatibilityChessboard::calculate()
                 {
                     std::cout << "k = " << k << std::endl;
                 }
-                if (save)
-                {
-                    *compatibilityFiles[i][j] << std::endl << "object " << k;
-                }
                 for (size_t l = 0; l < numLabels; ++l)
                 {
+                    if (verbose > 1)
+                    {
+                        std::cout << "l = " << l << std::endl;
+                    }
                     for (size_t m = 0; m < numObjects; ++m)
                     {
+                        if (save)
+                        {
+                            *compatibilityFiles[i][j][k][l] << std::endl << "object " << m;
+                        }
                         if (verbose > 1)
                         {
                             std::cout << "m = " << m << std::endl;
                         }
                         for (size_t n = 0; n < numLabels; ++n)
                         {
-                            if (verbose > 1)
-                            {
-                                std::cout << "n = " << n << std::endl;
-                            }
                             compatibility(i, j, k, l, m, n) = 1.0;
                             if (verbose > 1)
                             {
-                                std::cout << "l = " << l << std::endl;
-                                std::cout << '\t' << "compatibility = " << compatibility(i, j, k, l) << std::endl;
+                                std::cout << "n = " << n << std::endl;
+                                std::cout << '\t' << "compatibility = " << compatibility(i, j, k, l, m, n) << std::endl;
                             }
                             if (save)
                             {
-                                *compatibilityFiles[i][j] << "," << compatibility(i,j,k,l);
+                                *compatibilityFiles[i][j][k][l] << "," << compatibility(i,j,k,l,m,n);
                             }
                         }
                     }
+                    compatibilityFiles[i][j][k][l]->close();
                 }
             }
-            compatibilityFiles[i][j]->close();
         }
     }
 }
