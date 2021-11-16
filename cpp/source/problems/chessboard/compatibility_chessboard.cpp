@@ -1,8 +1,11 @@
+#include <iostream>
+#include <fstream>
+#include <memory>
 
 #include "compatibility_chessboard.hpp"
 
 CompatibilityChessboard::CompatibilityChessboard(size_t numObjects, size_t numLabels) :
-    Compatibility(numObjects, numLabels)
+    Compatibility3Pairs(numObjects, numLabels)
 {
     calculate();
 }
@@ -29,22 +32,22 @@ void CompatibilityChessboard::calculateOneCorner(size_t r,size_t c,size_t numRow
 
     if (c+2 < numColumns)
     {
-        compatibilityValue += calculateOneDirection(RIGHT, r, c, r, c+1, r, c+2);
+        compatibilityValue += calculateOneDirection(Direction::RIGHT, r, c, r, c+1, r, c+2);
         numDirections++;
     }
     if (c-2 < numColumns)
     {
-        compatibilityValue += calculateOneDirection(LEFT, r, c, r, c-1, r, c-2);
+        compatibilityValue += calculateOneDirection(Direction::LEFT, r, c, r, c-1, r, c-2);
         numDirections++;
     }
     if (r-2 < numColumns)
     {
-        compatibilityValue += calculateOneDirection(UP, r, c, r-1, c, r-2, c);
+        compatibilityValue += calculateOneDirection(Direction::UP, r, c, r-1, c, r-2, c);
         numDirections++;
     }
     if (r+2 < numColumns)
     {
-        compatibilityValue += calculateOneDirection(UP, r, c, r-1, c, r-2, c);
+        compatibilityValue += calculateOneDirection(Direction::DOWN, r, c, r+1, c, r+2, c);
         numDirections++;
     }
 }
@@ -63,8 +66,8 @@ double CompatibilityChessboard::calculateOneDirection(Direction direction, size_
     far[0] = findChessboardCorners.corners[rowFar][columnFar][0];
     far[1] = findChessboardCorners.corners[rowFar][columnFar][1];
 
-    Eigen::vector2d originToNear = near - origin;
-    Eigen::vector2d nearToFar = far - near;
+    Eigen::Vector2d originToNear = near - origin;
+    Eigen::Vector2d nearToFar = far - near;
 
     double compatibilityValue = originToNear.dot(nearToFar);
 
@@ -79,7 +82,10 @@ void CompatibilityChessboard::calculate()
     }
     
     // output files of compatibility figures if desired
-    std::vector<std::vector<std::unique_ptr<std::ofstream> > > compatibilityFiles(numObjects);
+    std::vector<std::vector<std::vector<std::vector<std::unique_ptr<std::ofstream>>>>> compatibilityFiles(numObjects,
+            std::vector<std::vector<std::vector<std::unique_ptr<std::ofstream>>>>(numLabels, 
+                std::vector<std::vector<std::unique_ptr<std::ofstream>>>(numObjects,
+                    std::vector<std::unique_ptr<std::ofstream>>(numLabels))));
     if (save)
     {
         std::ofstream summaryFile("structure.csv", std::ofstream::out);
@@ -92,6 +98,12 @@ void CompatibilityChessboard::calculate()
             compatibilityFiles.reserve(numLabels);
             for (int j = 0; j < numLabels; ++j)
             {
+                compatibilityFiles[j].reserve(numObjects);
+                for (int k = 0; k < numObjects; ++k)
+                {
+                    compatibilityFiles[j].reserve(numLabels);
+                    for (int l = 0; l < numLabels; ++l)
+                    {
                 std::stringstream fileName;
                 fileName << "compatibility_" << i << "_" << j << ".csv";
                 compatibilityFiles[i].emplace_back(std::make_unique<std::ofstream>());

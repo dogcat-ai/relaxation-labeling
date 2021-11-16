@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.4)
+
+add_library(compatibility_chessboard compatibility_chessboard.hpp compatibility_chessboard.cpp)
+
+target_link_libraries(compatibility_chessboard compatibility)
