@@ -10,17 +10,23 @@
 int main()
 {
     std::cout << "relax_points3d top" << std::endl;
-    std::vector<Eigen::Vector3d> objects(4);
-    objects[0] = Eigen::Vector3d(0,0,0);
-    objects[1] = Eigen::Vector3d(1,2,1);
-    objects[2] = Eigen::Vector3d(5,-2,2);
-    objects[3] = Eigen::Vector3d(15,-6,5);
+    const int n = 20;
+    const float scale = 10.0;
+    std::vector<Eigen::Vector3d> objects(n);
+    for (int i=0; i<n; i++)
+    {
+        objects[i] = scale*Eigen::Vector3d::Random(3);
+    }
 
-    std::vector<Eigen::Vector3d> labels(4);
-    labels[0] = Eigen::Vector3d(0,0,0);
-    labels[1] = Eigen::Vector3d(1,2,1);
-    labels[2] = Eigen::Vector3d(5,-2,2);
-    labels[3] = Eigen::Vector3d(15,-6,5);
+    const float noiseScale = .02*scale;
+    const int m = n-1;
+    std::vector<Eigen::Vector3d> labels(m);
+    for (int i=0; i<m; i++)
+    {
+        labels[i] = noiseScale*Eigen::Vector3d::Random(3) + objects[i];
+    }
+
+    std::cout << "Start --> " << std::endl;
 
     CompatibilityPoints3d compatibilityPoints3d(objects.size(),labels.size(), objects, labels);
     RelaxationLabeling relaxationLabeling(compatibilityPoints3d.compatibility);

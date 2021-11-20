@@ -2,13 +2,13 @@
 #include <iostream>
 #include <limits>
 
-#include "relax.hpp"
+#include "relax3Pairs.hpp"
 
-RelaxationLabeling::RelaxationLabeling(const Eigen::Tensor<double, 4>& compatibility) :
+RelaxationLabeling::RelaxationLabeling(const Eigen::Tensor<double, 6>& compatibility) :
     compatibility(compatibility),
     supportFactor(1.0),
     iteration(0),
-    iterationLimit(30),
+    iterationLimit(70),
     save(true),
     verbose(0)
 {
@@ -37,6 +37,12 @@ RelaxationLabeling::RelaxationLabeling(const Eigen::Tensor<double, 4>& compatibi
         std::cout << "best strength for object #" << i << " is " << val << " with label " << index << std::endl;
     }
     std::cout << iterationLimit << " loops for " << numObjects << " objects and " << numLabels << " labels: " << (stop - start)/1000.0 << " millisec.  Hertz: " << 1.0/((stop-start)/1000000.0) << std::endl;
+
+    int numP = 1;
+    for (int i=0; i<numObjects; i++) {
+        numP *= (i+1);
+    }
+    std::cout << "Number permutations: " << numP << std::endl;
 }
 
 void RelaxationLabeling::iterate()
@@ -48,22 +54,36 @@ void RelaxationLabeling::iterate()
 
 void RelaxationLabeling::updateSupport()
 {
-    std::array<long, 4> extent = {1,1,numObjects,numLabels};  // Size of array to slice from starting point
+    support.array() = 0.0;
+
+    std::array<long, 6> extent = {1,1,1,1,numObjects,numLabels};  // Size of array to slice from starting point
 
     for (size_t i = 0; i < numObjects; ++i)
     {
         for (size_t j = 0; j < numLabels; ++j)
         {
-            std::array<long, 4> offset = {long(i),long(j),0,0};  // Starting point
-            Eigen::Tensor<double, 4> compatSliceTensor = compatibility.slice(offset, extent);
+            for (size_t k = 0; k < numObjects; ++k)
+            {
+                for (size_t l = 0; l < numLabels; ++l)
+                {
+                    /*
+                    std::array<long, 6> offset = {long(i),long(j),long(k),long(l),0,0};
+                    Eigen::Tensor<double, 6> compatSliceTensor = compatibility.slice(offset, extent);
 
-            Eigen::MatrixXd compatSlice = Eigen::Map<const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> (compatSliceTensor.data(), numObjects, numLabels);
+                    Eigen::MatrixXd compatSlice = Eigen::Map<const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> (compatSliceTensor.data(), numObjects, numLabels);
 
-            support(i,j) = (compatSlice.array()*strength.array()).sum();
-        }
-        if (verbose > 1)
-        {
-            std::cout << "raw support for object " << i << std::endl << support.row(i) << std::endl;
+                    support(i,j) += (compatSlice.array()*strength.array()).sum();
+                    */
+
+                       for (size_t m = 0; m < numObjects; ++m)
+                       {
+                       for (size_t n = 0; n < numLabels; ++n)
+                       {
+                       support(i,j) += compatibility(i,j,k,l,m,n)*(strength(k,l)*strength(m,n));
+                       }
+                       }
+                }
+            }
         }
     }
     normalizeSupport(SupportNormalizationMethod::ALL_IJ);
