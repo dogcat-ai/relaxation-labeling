@@ -35,14 +35,30 @@ class RelaxationLabeling(object):
                         for l in range(self.numLabels):
                             self.support[i,j] += self.strength[k,l]*self.compatibility[i,j,k,l]
                 self.normalizeSupport(i)
-        if self.compatType == 3:
-            for i in range(self.numObjects):
-                for j in range(self.numLabels):
-                    for k in range(self.numObjects):
-                        for l in range(self.numLabels):
-                            for m in range(self.numObjects):
-                                for n in range(self.numLabels):
-                                    self.support[i,j] += self.strength[k,l]*self.strength[m,n]*self.compatibility[i,j,k,l,m,n]
+        if self.compatType == 3: 
+            USE_MATRIX_MULT = True
+            #TODO Perform further verificaion on the matrix multiplication technique
+            #Some general test code is testmath.py
+            if USE_MATRIX_MULT:
+                expanded_strength = np.zeros((self.numObjects,self.numLabels,self.numObjects,self.numLabels))
+                for i in range(self.numObjects):
+                    for j in range(self.numLabels):
+                        expanded_strength[i,j,:,:] = self.strength[i,j]
+                self.support = np.zeros((self.numObjects, self.numLabels))
+                z = np.multiply(expanded_strength, self.compatibility)
+                self.support = np.multiply(self.strength, z)
+                self.support = np.reshape(self.support, (self.numObjects, self.numLabels, -1))
+                self.support = self.support.sum(axis=2)
+                for i in range(self.numObjects):
+                    self.normalizeSupport(i)
+            else:
+                for i in range(self.numObjects):
+                    for j in range(self.numLabels):
+                        for k in range(self.numObjects):
+                            for l in range(self.numLabels):
+                                for m in range(self.numObjects):
+                                    for n in range(self.numLabels):
+                                        self.support[i,j] += self.strength[k,l]*self.strength[m,n]*self.compatibility[i,j,k,l,m,n]
                 self.normalizeSupport(i)
 
     def normalizeSupport(self, i):
@@ -52,6 +68,7 @@ class RelaxationLabeling(object):
         self.support[i, :] = (self.support[i, :] - minimumSupport)/maximumSupport
 
     def updateStrength(self):
+        #TODO Replace with matrix multiplication
         technique = 2
         if technique == 1:
             for i in range(self.numObjects):
