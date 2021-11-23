@@ -43,8 +43,6 @@ class CompatibilityChessboard(Compatibility3Pairs):
             self.calculateOneDirection(r, c, r-1, c, r-2, c)
 
     def calculateOneDirection(self, rowOrigin, columnOrigin, rowNear, columnNear, rowFar, columnFar):
-        print ('Shape of  corners ',self.findChessboardCorners.corners.shape)
-        print ('Num rows ',self.numRows,'  cols ',self.numColumns)
         origin = np.array([self.findChessboardCorners.corners[rowOrigin*self.numColumns+columnOrigin][0],self.findChessboardCorners.corners[rowOrigin*self.numColumns+columnOrigin][1]])
         near = np.array([self.findChessboardCorners.corners[rowNear*self.numColumns+columnNear][0],self.findChessboardCorners.corners[rowNear*self.numColumns+columnNear][1]])
         far = np.array([self.findChessboardCorners.corners[rowFar*self.numColumns+columnFar][0],self.findChessboardCorners.corners[rowFar*self.numColumns+columnFar][1]])

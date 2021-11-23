@@ -53,9 +53,16 @@ class FindChessboardCorners:
     def readInImage(self):
         image = mpimg.imread(self.chessboardImageName)
         if self.showOriginalImage:
-            cv2.imshow(self.chessboardImageName, image)
-            cv2.waitKey()
-            cv2.destroyWindow(self.chessboardImageName)
+            if False:
+                    cv2.imshow(self.chessboardImageName, image)
+                    cv2.waitKey()
+                    cv2.destroyWindow(self.chessboardImageName)
+            else:
+                    plt.figure(self.chessboardImageName)
+                    plt.title('Original Image')
+                    plt.imshow(image, cmap='gray')
+                    plt.show()
+
 
         return image
 
@@ -84,18 +91,30 @@ class FindChessboardCorners:
         else:
             displayImage = image
 
-        # Draw image and display the corners
-        cv2.drawChessboardCorners(displayImage, (self.numColumns, self.numRows), self.corners, ret)
-
-        if self.doLargerCircles:
-            # Draw larger circles at chessboard corners for clarity
+        if True:
+            plt.figure(self.chessboardImageName)
+            plt.title('Chessboard Corners')
+            plt.imshow(displayImage)
+            x = []
+            y = []
             for w in range(0,len(self.corners)):
-                colorImg = cv2.circle(self.image, (self.corners[w][0], self.corners[w][1]), radius=24,color=(0,0,255), thickness=6)
-            resultName = self.chessboardImageName
+                x.append(self.corners[w][0])
+                y.append(self.corners[w][1])
+            plt.plot(x, y, marker='x', color='red', linestyle='dashed', linewidth=1)
+            plt.show()
+        else:
+            # Draw image and display the corners
+            cv2.drawChessboardCorners(displayImage, (self.numColumns, self.numRows), self.corners, ret)
 
-        cv2.imshow(self.chessboardImageName, displayImage)
-        cv2.waitKey()
-        cv2.destroyWindow(self.chessboardImageName)
+            if self.doLargerCircles:
+                # Draw larger circles at chessboard corners for clarity
+                for w in range(0,len(self.corners)):
+                    colorImg = cv2.circle(self.image, (self.corners[w][0], self.corners[w][1]), radius=24,color=(0,0,255), thickness=6)
+                resultName = self.chessboardImageName
+
+            cv2.imshow(self.chessboardImageName, displayImage)
+            cv2.waitKey()
+            cv2.destroyWindow(self.chessboardImageName)
 
     def loop(self, chessboardImageName):
         self.chessboardImageName = chessboardImageName
