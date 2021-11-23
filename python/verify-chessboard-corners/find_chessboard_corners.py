@@ -19,21 +19,21 @@ class FindChessboardCorners:
         imageCase = 1
         if imageCase == 1:
             self.chessboardImagesNames = glob.glob('./images/camera_cal/*.jpg')
-            self.nx = 10
-            self.ny = 7
+            self.numColumns = 10
+            self.numRows = 7
         elif imageCase == 2:
             self.chessboardImagesNames = glob.glob('./images/stereo_rig/*.png')
-            self.nx = 6
-            self.ny = 5
+            self.numColumns = 6
+            self.numRows = 5
         elif imageCase == 3:
             self.chessboardImagesNames = glob.glob('./images/calib_example1/*.tif')
-            self.nx = 13
-            self.ny = 12
+            self.numColumns = 13
+            self.numRows = 12
 
         if self.verbose > 0:
             self.debugTabs.print("chessboard images names: {}".format(self.chessboardImagesNames))
-            self.debugTabs.print("num columns: {}".format(self.nx))
-            self.debugTabs.print("num rows: {}".format(self.ny))
+            self.debugTabs.print("num columns: {}".format(self.numColumns))
+            self.debugTabs.print("num rows: {}".format(self.numRows))
 
         self.main()
 
@@ -85,7 +85,7 @@ class FindChessboardCorners:
             displayImage = image
 
         # Draw image and display the corners
-        cv2.drawChessboardCorners(displayImage, (self.nx, self.ny), self.corners, ret)
+        cv2.drawChessboardCorners(displayImage, (self.numColumns, self.numRows), self.corners, ret)
 
         if self.doLargerCircles:
             # Draw larger circles at chessboard corners for clarity
@@ -106,17 +106,17 @@ class FindChessboardCorners:
         self.image = self.convert2uint8(image)
 
         # Find the chessboard corners
-        ret, self.corners = cv2.findChessboardCorners(image, (self.nx, self.ny), None)
+        ret, self.corners = cv2.findChessboardCorners(image, (self.numColumns, self.numRows), None)
         self.corners = np.squeeze(self.corners)
         # Print out coordinates of corners
         if self.verbose > 0:
             for c, corner in enumerate(self.corners):
                 end = '   '
-                row = c // self.nx
-                column = c - row*self.nx
-                if (c % self.nx) == 0:
-                    self.debugTabs.print('row {}:'.format(c // self.nx), end=end)
-                elif (c % self.nx) == (self.nx - 1):
+                row = c // self.numColumns
+                column = c - row*self.numColumns
+                if (c % self.numColumns) == 0:
+                    self.debugTabs.print('row {}:'.format(c // self.numColumns), end=end)
+                elif (c % self.numColumns) == (self.numColumns - 1):
                     end = '\n'
                 self.debugTabs.print("({},{}): {}".format(row, column, corner), end=end)
         

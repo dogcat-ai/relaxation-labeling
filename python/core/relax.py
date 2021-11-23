@@ -2,12 +2,25 @@ import numpy as np
 
 class RelaxationLabeling(object):
 
-    def __init__(self, numObjects, numLabels, compatType, save):
-        self.compatType = compatType # Are we dealing with two pairs of object-labels (2) or three pairs of object-labels (3)
+    def __init__(self, compatibility, save):
+        self.compatibility = compatibility
+        self.numObjects = compatibility.shape[0]
+        self.numLabels = compatibility.shape[1]
+        if len(compatibility.shape) == 4:
+            self.compatType = 2
+        elif len(compatibility.shape) == 6:
+            self.compatType = 3
+        else:
+            print ('Unexpected compatibility shape: ',self.compatibility.shape)
+            print ('EXIT PROGRAM')
+            exit()
+
         self.save = save
         self.supportFactor = 1.0
         self.iterations = 30
         self.iteration = 0
+
+        self.main()
 
     def initStrengthAndSupport(self):
         self.strength = np.ones(shape = [self.numObjects, self.numLabels])*1/self.numLabels
@@ -118,11 +131,6 @@ class RelaxationLabeling(object):
         compatibilityFile.close()
 
     def main(self):
-        print("objects:")
-        print(self.objects)
-        print("labels:")
-        print(self.labels)
-        self.calculateCompatibility()
         self.initStrengthAndSupport()
         print('Num objects', self.numObjects)
         print('Num labels', self.numLabels)

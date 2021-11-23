@@ -14,5 +14,5 @@ class Compatibility2Pairs(Compatibility):
 
 class Compatibility3Pairs(Compatibility):
     def __init__(self, numObjects, numLabels):
-        self.__super__(numObjects, numLabels)
+        super(Compatibility3Pairs,self).__init__(numObjects, numLabels)
         self.compatibility = np.zeros(shape = (numObjects,numLabels,numObjects,numLabels,numObjects,numLabels), dtype = np.float64)
