@@ -3,28 +3,43 @@ import math
 
 class Points3DCompatibility:
     def __init__(self, numLabels):
+        self.DPSCALE = 2.0
         self.dim = 3
         self.numLabels = numLabels
         self.labels = np.random.rand(self.numLabels,self.dim)
         self.objects = np.copy(self.labels)
 
-        # Rotate, scale and translate objects wrt labels
-        self.rotateObjects(np.deg2rad(35), np.deg2rad(55), np.deg2rad(70))
-        self.objects = .2*self.objects + [10, 20, 30]
+        # Modify Objects
+        ROTATE_OBJECTS = True
+        SCALE_OBJECTS = True
+        TRANSLATE_OBJECTS = True
+        ADD_NOISE_TO_OBJECTS = True
+        REMOVE_OBJECTS = False
+        ADD_OBJECTS = False
+        FLIP_OBJECT_ORDER = True
 
-        if True:
+        # Rotate, scale and translate objects wrt labels
+        if ROTATE_OBJECTS:
+            self.rotateObjects(np.deg2rad(35), np.deg2rad(55), np.deg2rad(70))
+        if SCALE_OBJECTS:
+            self.objects *= .2
+        if TRANSLATE_OBJECTS:
+            self.objects += [10, 20, 30]
+
+        if FLIP_OBJECT_ORDER:
             # Just to be sure that relax is working properly, reverse the order
             # of the objects
             self.objects = np.flip(self.objects)
+        if ADD_NOISE_TO_OBJECTS:
+            noise = .01*np.random.rand(len(self.objects),self.dim)
+            self.objects += noise
 
-        if False:
-            # Suppose there is an extra object
-            # TODO Currently this is not working,
-            # this is the start of implementing the 'noise' label
-            # Can this work and still perform matrix mults in the support computation?
-            self.objects = np.append(self.objects, [1000, 1000, 1000]).reshape((-1,3))
-            self.labels  = np.append(self.labels, [-1000, -1000, -1000]).reshape((-1,3))
-
+        if ADD_OBJECTS:
+            self.objects = np.append(self.objects,[50, 60, 70]).reshape((-1,3))
+            self.objects = np.append(self.objects, [0, 0, 0]).reshape((-1,3))
+        if REMOVE_OBJECTS:
+            self.objects = np.delete(self.objects, 0, axis=0).reshape((-1,3))
+            self.objects = np.delete(self.objects, 0, axis=0).reshape((-1,3))
 
         self.numLabels = len(self.labels)
         self.numObjects = len(self.objects)
@@ -85,6 +100,6 @@ class Points3DCompatibility:
                                     vobj23 /= nvobj23
                                     vlab21 /= nvlab21
                                     vlab23 /= nvlab23
-                                    self.compatibility[i,j,k,l,m,n] = 1.0/(1.0+abs(np.dot(vobj21,vobj23) - np.dot(vlab21,vlab23)))
+                                    self.compatibility[i,j,k,l,m,n] = 1.0/(1.0+self.DPSCALE*abs(np.dot(vobj21,vobj23) - np.dot(vlab21,vlab23)))
 
 
