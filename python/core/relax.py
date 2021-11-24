@@ -3,6 +3,8 @@ import numpy as np
 class RelaxationLabeling(object):
 
     def __init__(self, compatibility, save):
+        self.useMatrixMultiplication = True
+        self.normalizeSupportAll = False
         self.compatibility = compatibility
         self.numObjects = compatibility.shape[0]
         self.numLabels = compatibility.shape[1]
@@ -36,16 +38,14 @@ class RelaxationLabeling(object):
                             self.support[i,j] += self.strength[k,l]*self.compatibility[i,j,k,l]
                 self.normalizeSupport(i)
         if self.compatType == 3: 
-            USE_MATRIX_MULT = True
             #TODO Perform further verificaion on the matrix multiplication technique
             #Some general test code is testmath.py
-            if USE_MATRIX_MULT:
-                expanded_strength = np.zeros((self.numObjects,self.numLabels,self.numObjects,self.numLabels))
+            if self.useMatrixMultiplication:
+                strengthExpanded = np.zeros((self.numObjects,self.numLabels,self.numObjects,self.numLabels))
                 for i in range(self.numObjects):
                     for j in range(self.numLabels):
-                        expanded_strength[i,j,:,:] = self.strength[i,j]
-                self.support = np.zeros((self.numObjects, self.numLabels))
-                z = np.multiply(expanded_strength, self.compatibility)
+                        strengthExpanded[i,j,:,:] = self.strength[i,j]
+                z = np.multiply(strengthExpanded, self.compatibility)
                 self.support = np.multiply(self.strength, z)
                 self.support = np.reshape(self.support, (self.numObjects, self.numLabels, -1))
                 self.support = self.support.sum(axis=2)
@@ -53,7 +53,7 @@ class RelaxationLabeling(object):
                 #TODO Probably remove normalizeSupportAll, because this was
                 #tested and had noticeably pooring results then normalizing
                 #across rows
-                if False:
+                if self.normalizeSupportAll:
                     self.normalizeSupportAll()
                 else:
                     for i in range(self.numObjects):
