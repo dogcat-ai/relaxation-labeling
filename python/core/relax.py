@@ -49,8 +49,15 @@ class RelaxationLabeling(object):
                 self.support = np.multiply(self.strength, z)
                 self.support = np.reshape(self.support, (self.numObjects, self.numLabels, -1))
                 self.support = self.support.sum(axis=2)
-                for i in range(self.numObjects):
-                    self.normalizeSupport(i)
+
+                #TODO Probably remove normalizeSupportAll, because this was
+                #tested and had noticeably pooring results then normalizing
+                #across rows
+                if False:
+                    self.normalizeSupportAll()
+                else:
+                    for i in range(self.numObjects):
+                        self.normalizeSupport(i)
             else:
                 for i in range(self.numObjects):
                     for j in range(self.numLabels):
@@ -60,6 +67,12 @@ class RelaxationLabeling(object):
                                     for n in range(self.numLabels):
                                         self.support[i,j] += self.strength[k,l]*self.strength[m,n]*self.compatibility[i,j,k,l,m,n]
                 self.normalizeSupport(i)
+
+    def normalizeSupportAll(self):
+        minimumSupport = np.amin(self.support)
+        maximumSupport = np.amax(self.support)
+        maximumSupport -= minimumSupport
+        self.support = (self.support - minimumSupport)/maximumSupport
 
     def normalizeSupport(self, i):
         minimumSupport = np.amin(self.support[i,:])
