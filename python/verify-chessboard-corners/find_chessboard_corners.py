@@ -7,11 +7,12 @@ import numpy as np
 import debug_tabs as dt
 
 class FindChessboardCorners:
-    def __init__(self):
+    def __init__(self, useMatPlotLib=True, showImageOrCorners=True):
         self.debugTabs = dt.DebugTabs()
         self.verbose = 1
+        self.useMatPlotLib = useMatPlotLib
+        self.showImageOrCorners = showImageOrCorners
         self.useColorImage = True
-        self.showOriginalImage = True
         self.doLargerCircles = False
         self.corners = []
 
@@ -52,17 +53,16 @@ class FindChessboardCorners:
 
     def readInImage(self):
         image = mpimg.imread(self.chessboardImageName)
-        if self.showOriginalImage:
-            if False:
-                    cv2.imshow(self.chessboardImageName, image)
-                    cv2.waitKey()
-                    cv2.destroyWindow(self.chessboardImageName)
+        if self.showImageOrCorners:
+            if self.useMatPlotLib:
+                plt.figure(self.chessboardImageName)
+                plt.title('Original Image')
+                plt.imshow(image, cmap='gray')
+                plt.show()
             else:
-                    plt.figure(self.chessboardImageName)
-                    plt.title('Original Image')
-                    plt.imshow(image, cmap='gray')
-                    plt.show()
-
+                cv2.imshow(self.chessboardImageName, image)
+                cv2.waitKey()
+                cv2.destroyWindow(self.chessboardImageName)
 
         return image
 
@@ -91,7 +91,7 @@ class FindChessboardCorners:
         else:
             displayImage = image
 
-        if True:
+        if self.useMatPlotLib:
             plt.figure(self.chessboardImageName)
             plt.title('Chessboard Corners')
             plt.imshow(displayImage)
@@ -141,7 +141,8 @@ class FindChessboardCorners:
         
         # If found, draw corners
         if ret == True:
-            self.drawCorners(ret)
+            if self.showImageOrCorners:
+                self.drawCorners(ret)
         else:
             self.debugTabs.print ('Unable to find chessboard corners for image {}'.format(self.chessboardImageName))
 
