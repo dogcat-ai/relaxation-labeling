@@ -2,12 +2,15 @@ import numpy as np
 
 class RelaxationLabeling(object):
 
-    def __init__(self, compatibility, save):
-        self.useMatrixMultiplication = True
-        self.normalizeSupportAll = False
+    def __init__(self, compatibility, save, UseMatrixMultiplication=True, iterations=50):
         self.compatibility = compatibility
+        self.save = save
+        self.useMatrixMultiplication = UseMatrixMultiplication
+        self.iterations = iterations
+
         self.numObjects = compatibility.shape[0]
         self.numLabels = compatibility.shape[1]
+        self.printMatrices = False
         if len(compatibility.shape) == 4:
             self.compatType = 2
         elif len(compatibility.shape) == 6:
@@ -15,11 +18,10 @@ class RelaxationLabeling(object):
         else:
             print ('Unexpected compatibility shape: ',self.compatibility.shape)
             print ('EXIT PROGRAM')
-            exit()
+            exit(1)
 
-        self.save = save
+        self.normalizeSupportAcrossEntireMatrix = False
         self.supportFactor = 1.0
-        self.iterations = 30
         self.iteration = 0
 
         self.main()
@@ -27,6 +29,11 @@ class RelaxationLabeling(object):
     def initStrengthAndSupport(self):
         self.strength = np.ones(shape = [self.numObjects, self.numLabels])*1/self.numLabels
         self.support = np.zeros(shape = [self.numObjects, self.numLabels])
+        if self.printMatrices:
+            print('Initial Support')
+            print(self.support)
+            print('Initial Strength')
+            print(self.strength)
 
     def updateSupport(self):
         if self.compatType == 2:
@@ -38,26 +45,21 @@ class RelaxationLabeling(object):
                             self.support[i,j] += self.strength[k,l]*self.compatibility[i,j,k,l]
                 self.normalizeSupport(i)
         if self.compatType == 3: 
-            #TODO Perform further verificaion on the matrix multiplication technique
-            #Some general test code is testmath.py
             if self.useMatrixMultiplication:
                 strengthExpanded = np.zeros((self.numObjects,self.numLabels,self.numObjects,self.numLabels))
-                for i in range(self.numObjects):
-                    for j in range(self.numLabels):
-                        strengthExpanded[i,j,:,:] = self.strength[i,j]
+                #TODO Eliminate the else when the broadcast has been verified.  Do timing analysis?
+                if True:
+                    # Duplicate strength across 2 more dimensions to allow for the proper muliplication results below
+                    strengthExpanded = np.broadcast_to(self.strength, (self.numObjects, self.numLabels, self.numObjects, self.numLabels))
+                else:
+                    for i in range(self.numObjects):
+                        for j in range(self.numLabels):
+                            strengthExpanded[i,j,:,:] = self.strength[i,j]
                 z = np.multiply(strengthExpanded, self.compatibility)
                 self.support = np.multiply(self.strength, z)
                 self.support = np.reshape(self.support, (self.numObjects, self.numLabels, -1))
                 self.support = self.support.sum(axis=2)
-
-                #TODO Probably remove normalizeSupportAll, because this was
-                #tested and had noticeably pooring results then normalizing
-                #across rows
-                if self.normalizeSupportAll:
-                    self.normalizeSupportAll()
-                else:
-                    for i in range(self.numObjects):
-                        self.normalizeSupport(i)
+                self.normalizeSupport()
             else:
                 for i in range(self.numObjects):
                     for j in range(self.numLabels):
@@ -68,49 +70,84 @@ class RelaxationLabeling(object):
                                         self.support[i,j] += self.strength[k,l]*self.strength[m,n]*self.compatibility[i,j,k,l,m,n]
                 self.normalizeSupport(i)
 
-    def normalizeSupportAll(self):
-        minimumSupport = np.amin(self.support)
-        maximumSupport = np.amax(self.support)
-        maximumSupport -= minimumSupport
-        self.support = (self.support - minimumSupport)/maximumSupport
-
-    def normalizeSupport(self, i):
-        minimumSupport = np.amin(self.support[i,:])
-        maximumSupport = np.amax(self.support[i,:])
-        maximumSupport -= minimumSupport
-        self.support[i, :] = (self.support[i, :] - minimumSupport)/maximumSupport
+    def normalizeSupport(self, i=None):
+        if i is None:
+            if self.normalizeSupportAcrossEntireMatrix:
+                minimumSupport = np.amin(self.support)
+                maximumSupport = np.amax(self.support)
+                maximumSupport -= minimumSupport
+                self.support = (self.support - minimumSupport)/maximumSupport
+            else:
+                if self.useMatrixMultiplication:
+                    minimumSupport = np.amin(self.support, axis=1)
+                    maximumSupport = np.amax(self.support, axis=1)
+                    maximumSupport -= minimumSupport
+                    self.support = np.divide(self.support.T - minimumSupport, maximumSupport).T
+                else:
+                    for i in range(self.numObjects):
+                        minimumSupport = np.amin(self.support[i,:])
+                        maximumSupport = np.amax(self.support[i,:])
+                        maximumSupport -= minimumSupport
+                        self.support[i, :] = (self.support[i, :] - minimumSupport)/maximumSupport
+        else:
+            minimumSupport = np.amin(self.support[i,:])
+            maximumSupport = np.amax(self.support[i,:])
+            maximumSupport -= minimumSupport
+            self.support[i, :] = (self.support[i, :] - minimumSupport)/maximumSupport
 
     def updateStrength(self):
-        #TODO Replace with matrix multiplication
         technique = 2
         if technique == 1:
-            for i in range(self.numObjects):
-                for j in range(self.numLabels):
-                    self.strength[i,j] += self.support[i,j]*self.supportFactor
-                self.normalizeStrength(i)
+            if self.useMatrixMultiplication:
+                self.strength = self.strength + self.support*self.supportFactor
+                self.normalizeStrength()
+            else:
+                for i in range(self.numObjects):
+                    for j in range(self.numLabels):
+                        self.strength[i,j] += self.support[i,j]*self.supportFactor
+                    self.normalizeStrength(i)
         if technique == 2:
-            for i in range(self.numObjects):
-                den = 0.0
-                for j in range(0,self.numLabels):
-                    den += self.strength[i,j]*(1.0+self.support[i,j])
-                for j in range(0,self.numLabels):
-                    self.strength[i,j] = self.strength[i,j]*(1.0+self.support[i,j])/den
-                self.normalizeStrength(i)
+            if self.useMatrixMultiplication:
+                tmp= self.strength + np.multiply(self.strength,self.support)
+                den = tmp.sum(axis=1)
+                self.strength = np.divide(tmp.T,den).T
+                self.normalizeStrength()
+            else:
+                for i in range(self.numObjects):
+                    den = 0.0
+                    for j in range(0,self.numLabels):
+                        den += self.strength[i,j]*(1.0+self.support[i,j])
+                    for j in range(0,self.numLabels):
+                        self.strength[i,j] = self.strength[i,j]*(1.0+self.support[i,j])/den
+                    self.normalizeStrength(i)
 
-    def normalizeStrength(self, i):
+    def normalizeStrength(self, i=None):
         technique = 2
-        if technique == 1 or technique == 2:
-            minStrength = np.amin(self.strength[i, :])
-            self.strength[i, :] -= minStrength
-            if technique == 2:
-                sumStrength = np.sum(self.strength[i, :])
-                self.strength[i, :] /= sumStrength
+        if i is None:
+            if technique == 1 or technique == 2:
+                minStrength = np.amin(self.strength, axis=1)
+                self.strength = (self.strength.T - minStrength).T
+                if technique == 2:
+                    sumStrength = np.sum(self.strength, axis=1)
+                    self.strength = np.divide(self.strength.T, sumStrength).T
+        else:
+            if technique == 1 or technique == 2:
+                minStrength = np.amin(self.strength[i, :])
+                self.strength[i, :] -= minStrength
+                if technique == 2:
+                    sumStrength = np.sum(self.strength[i, :])
+                    self.strength[i, :] /= sumStrength
 
     def iterate(self):
         print("iteration {}".format(self.iteration))
         self.updateSupport()
         self.updateStrength()
         self.iteration += 1
+        if self.printMatrices:
+            print('Support iter #',self.iteration)
+            print(self.support)
+            print('Strength iter #',self.iteration)
+            print(self.strength)
 
     def assign(self):
         print('labeling from strength')
